@@ -1,0 +1,344 @@
+name: Auto Update Dependencies
+
+on:
+  schedule:
+    # Run daily at 00:00 UTC
+    - cron: '0 0 * * *'
+  workflow_dispatch:
+
+# Only one auto-update should run at a time
+concurrency:
+  group: auto-update
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  update-nixpkgs:
+    name: Update nixpkgs
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Update nixpkgs
+      id: update
+      run: |
+        # Update nixpkgs to latest unstable
+        nix flake update nixpkgs
+        
+        # Check if there are changes
+        if git diff --quiet flake.lock; then
+          echo "changed=false" >> $GITHUB_OUTPUT
+        else
+          echo "changed=true" >> $GITHUB_OUTPUT
+          
+          # Get the new nixpkgs commit
+          NEW_REV=$(nix flake metadata nixpkgs --json | jq -r '.revision[:7]')
+          echo "new_rev=$NEW_REV" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Create Pull Request
+      if: steps.update.outputs.changed == 'true'
+      id: create-pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore(nixpkgs): update to ${{ steps.update.outputs.new_rev }}"
+        title: "chore(nixpkgs): update to ${{ steps.update.outputs.new_rev }}"
+        body: |
+          ## Auto-update: nixpkgs
+          
+          This PR updates nixpkgs to the latest unstable commit.
+          
+          **New commit**: `${{ steps.update.outputs.new_rev }}`
+          
+          Please review and merge if CI passes.
+        branch: auto-update/nixpkgs-${{ steps.update.outputs.new_rev }}
+        delete-branch: true
+        labels: |
+          dependencies
+          automated
+    
+    - name: Enable auto-merge
+      if: steps.update.outputs.changed == 'true' && steps.create-pr.outputs.pull-request-number
+      run: gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-vendor-kernel:
+    name: Update Vendor Kernel
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Check for kernel updates
+      id: check
+      run: |
+        # Get current kernel commit
+        CURRENT_REV=$(grep 'rev = "' pkgs/kernel/vendor.nix | cut -d'"' -f2)
+        echo "Current kernel: $CURRENT_REV"
+        
+        # Get latest commit from upstream
+        LATEST_REV=$(curl -s https://api.github.com/repos/orangepi-xunlong/linux-orangepi/commits/orange-pi-6.1-cix | jq -r '.sha')
+        echo "Latest kernel: $LATEST_REV"
+        
+        if [ "$CURRENT_REV" != "$LATEST_REV" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "new_rev=$LATEST_REV" >> $GITHUB_OUTPUT
+          echo "new_rev_short=${LATEST_REV:0:7}" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Update kernel
+      if: steps.check.outputs.changed == 'true'
+      run: |
+        # Update the rev in vendor.nix
+        sed -i "s/rev = \".*\";/rev = \"${{ steps.check.outputs.new_rev }}\";/" pkgs/kernel/vendor.nix
+        
+        # Get new hash using nix-prefetch
+        NEW_HASH=$(nix-prefetch-url --unpack https://github.com/orangepi-xunlong/linux-orangepi/archive/${{ steps.check.outputs.new_rev }}.tar.gz 2>&1 | tail -1)
+        NEW_HASH_SRI=$(nix hash to-sri --type sha256 $NEW_HASH)
+        
+        # Update the hash
+        sed -i "s|hash = \".*\";|hash = \"$NEW_HASH_SRI\";|" pkgs/kernel/vendor.nix
+    
+    - name: Create Pull Request
+      if: steps.check.outputs.changed == 'true'
+      id: create-pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore(kernel): update vendor kernel to ${{ steps.check.outputs.new_rev_short }}"
+        title: "chore(kernel): update vendor kernel to ${{ steps.check.outputs.new_rev_short }}"
+        body: |
+          ## Auto-update: Vendor Kernel
+          
+          This PR updates the CIX Sky1 vendor kernel to the latest commit.
+          
+          **Repository**: `orangepi-xunlong/linux-orangepi`
+          **Branch**: `orange-pi-6.1-cix`
+          **New commit**: `${{ steps.check.outputs.new_rev }}`
+          
+          Changes will be tested in CI before merge.
+        branch: auto-update/kernel-${{ steps.check.outputs.new_rev_short }}
+        delete-branch: true
+        labels: |
+          kernel
+          automated
+    
+    - name: Enable auto-merge
+      if: steps.check.outputs.changed == 'true' && steps.create-pr.outputs.pull-request-number
+      run: gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-vendor-drivers:
+    name: Update Vendor Drivers & Firmware
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Check for driver updates
+      id: check
+      run: |
+        # Get current component commit from any driver file
+        CURRENT_REV=$(grep 'rev = "' pkgs/drivers/gpu/default.nix | cut -d'"' -f2)
+        echo "Current component: $CURRENT_REV"
+        
+        # Get latest commit from upstream
+        LATEST_REV=$(curl -s https://api.github.com/repos/orangepi-xunlong/component_cix-current/commits/main | jq -r '.sha')
+        echo "Latest component: $LATEST_REV"
+        
+        if [ "$CURRENT_REV" != "$LATEST_REV" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "new_rev=$LATEST_REV" >> $GITHUB_OUTPUT
+          echo "new_rev_short=${LATEST_REV:0:7}" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Update drivers and firmware
+      if: steps.check.outputs.changed == 'true'
+      run: |
+        # Get new hash
+        NEW_HASH=$(nix-prefetch-url --unpack https://github.com/orangepi-xunlong/component_cix-current/archive/${{ steps.check.outputs.new_rev }}.tar.gz 2>&1 | tail -1)
+        NEW_HASH_SRI=$(nix hash to-sri --type sha256 $NEW_HASH)
+        
+        # Update all driver files (userspace and kernel modules)
+        for file in pkgs/drivers/*/default.nix pkgs/firmware/default.nix pkgs/kernel-modules/*.nix pkgs/cix-tools/default.nix; do
+          sed -i "s/rev = \".*\";/rev = \"${{ steps.check.outputs.new_rev }}\";/" "$file"
+          sed -i "s|hash = \".*\";|hash = \"$NEW_HASH_SRI\";|" "$file"
+        done
+    
+    - name: Create Pull Request
+      if: steps.check.outputs.changed == 'true'
+      id: create-pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore(drivers): update vendor drivers to ${{ steps.check.outputs.new_rev_short }}"
+        title: "chore(drivers): update vendor drivers to ${{ steps.check.outputs.new_rev_short }}"
+        body: |
+          ## Auto-update: Vendor Drivers & Firmware
+          
+          This PR updates all CIX Sky1 vendor drivers and firmware to the latest commit.
+          
+          **Repository**: `orangepi-xunlong/component_cix-current`
+          **New commit**: `${{ steps.check.outputs.new_rev }}`
+          
+          Updated packages:
+          - GPU kernel driver (Mali-G610 MP4)
+          - GPU userspace driver (Mali-G610 MP4)
+          - NPU kernel driver (28.8 TOPS)
+          - NPU userspace driver (28.8 TOPS)
+          - ISP kernel driver
+          - ISP userspace driver
+          - VPU kernel driver
+          - VPU firmware
+          - System firmware
+          - CIX tools (i3ctransfer, pmtool)
+          
+          Changes will be tested in CI before merge.
+        branch: auto-update/drivers-${{ steps.check.outputs.new_rev_short }}
+        delete-branch: true
+        labels: |
+          drivers
+          automated
+    
+    - name: Enable auto-merge
+      if: steps.check.outputs.changed == 'true' && steps.create-pr.outputs.pull-request-number
+      run: gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  update-vendor-tools:
+    name: Update Vendor Tools
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: write
+      pull-requests: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Check for tools updates
+      id: check
+      run: |
+        # Get current orangepi-build commit
+        CURRENT_REV=$(grep 'rev = "' pkgs/orangepi-config/default.nix | cut -d'"' -f2)
+        echo "Current tools: $CURRENT_REV"
+        
+        # Get latest commit from upstream (main branch)
+        LATEST_REV=$(curl -s https://api.github.com/repos/orangepi-xunlong/orangepi-build/commits/main | jq -r '.sha')
+        echo "Latest tools: $LATEST_REV"
+        
+        # Skip if current is "main" (branch name, not commit)
+        if [ "$CURRENT_REV" = "main" ]; then
+          echo "Current rev is branch name, updating to commit hash"
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "new_rev=$LATEST_REV" >> $GITHUB_OUTPUT
+          echo "new_rev_short=${LATEST_REV:0:7}" >> $GITHUB_OUTPUT
+        elif [ "$CURRENT_REV" != "$LATEST_REV" ]; then
+          echo "changed=true" >> $GITHUB_OUTPUT
+          echo "new_rev=$LATEST_REV" >> $GITHUB_OUTPUT
+          echo "new_rev_short=${LATEST_REV:0:7}" >> $GITHUB_OUTPUT
+        else
+          echo "changed=false" >> $GITHUB_OUTPUT
+        fi
+    
+    - name: Update tools
+      if: steps.check.outputs.changed == 'true'
+      run: |
+        # Get new hash
+        NEW_HASH=$(nix-prefetch-url --unpack https://github.com/orangepi-xunlong/orangepi-build/archive/${{ steps.check.outputs.new_rev }}.tar.gz 2>&1 | tail -1)
+        NEW_HASH_SRI=$(nix hash to-sri --type sha256 $NEW_HASH)
+        
+        # Update orangepi-config and wiringop
+        sed -i "s/rev = \".*\";/rev = \"${{ steps.check.outputs.new_rev }}\";/" pkgs/orangepi-config/default.nix
+        sed -i "s|hash = \".*\";|hash = \"$NEW_HASH_SRI\";|" pkgs/orangepi-config/default.nix
+        sed -i "s/rev = \".*\";/rev = \"${{ steps.check.outputs.new_rev }}\";/" pkgs/wiringop/default.nix
+        sed -i "s|hash = \".*\";|hash = \"$NEW_HASH_SRI\";|" pkgs/wiringop/default.nix
+    
+    - name: Create Pull Request
+      if: steps.check.outputs.changed == 'true'
+      id: create-pr
+      uses: peter-evans/create-pull-request@v6
+      with:
+        token: ${{ secrets.GITHUB_TOKEN }}
+        commit-message: "chore(tools): update orangepi-build to ${{ steps.check.outputs.new_rev_short }}"
+        title: "chore(tools): update orangepi-build to ${{ steps.check.outputs.new_rev_short }}"
+        body: |
+          ## Auto-update: Vendor Tools
+          
+          This PR updates the Orange Pi build tools to the latest commit.
+          
+          **Repository**: `orangepi-xunlong/orangepi-build`
+          **New commit**: `${{ steps.check.outputs.new_rev }}`
+          
+          Updated packages:
+          - `orangepi-config` - Orange Pi hardware configuration tool
+          - `wiringop` - Orange Pi GPIO library and tools
+          
+          Changes will be tested in CI before merge.
+        branch: auto-update/tools-${{ steps.check.outputs.new_rev_short }}
+        delete-branch: true
+        labels: |
+          tools
+          automated
+    
+    - name: Enable auto-merge
+      if: steps.check.outputs.changed == 'true' && steps.create-pr.outputs.pull-request-number
+      run: gh pr merge --auto --squash "${{ steps.create-pr.outputs.pull-request-number }}"
+      env:
+        GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
