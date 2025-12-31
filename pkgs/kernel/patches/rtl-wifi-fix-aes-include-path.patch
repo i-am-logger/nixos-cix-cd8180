@@ -1,0 +1,30 @@
+# Fix AES crypto header include paths for RTL WiFi drivers
+#
+# RTL8811CU and RTL88X2BU WiFi drivers use incorrect include path <aes.h>
+# which should be <crypto/aes.h> to properly reference the kernel's AES 
+# implementation in the crypto subsystem.
+#
+# Fixes compilation error: aes.h: No such file or directory
+
+--- a/drivers/net/wireless/rtl8811cu/core/rtw_swcrypto.c
++++ b/drivers/net/wireless/rtl8811cu/core/rtw_swcrypto.c
+@@ -14,7 +14,7 @@
+  *****************************************************************************/
+ #include <drv_types.h>
+ #include <hal_data.h>
+-#include <aes.h>
++#include <crypto/aes.h>
+ #include <aes_siv.h>
+ #include <aes_wrap.h>
+ #include <sha256.h>
+--- a/drivers/net/wireless/rtl88x2bu/core/rtw_swcrypto.c
++++ b/drivers/net/wireless/rtl88x2bu/core/rtw_swcrypto.c
+@@ -14,7 +14,7 @@
+  *****************************************************************************/
+ #include <drv_types.h>
+ #include <hal_data.h>
+-#include <aes.h>
++#include <crypto/aes.h>
+ #include <aes_siv.h>
+ #include <aes_wrap.h>
+ #include <sha256.h>
