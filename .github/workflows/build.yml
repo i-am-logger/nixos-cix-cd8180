@@ -1,0 +1,474 @@
+name: Build NixOS Images
+
+on:
+  push:
+    branches: [ master ]
+  pull_request:
+    branches: [ master ]
+  workflow_dispatch:
+
+# Cancel in-progress runs when a new run is triggered
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
+
+# Minimal permissions (explicitly grant what's needed)
+permissions:
+  contents: write
+  pull-requests: read
+
+defaults:
+  run:
+    shell: bash
+
+# Build Strategy:
+# 1. build-soc: Build SoC components (CIX Sky1) - kernel, drivers, firmware, tools
+#    - Uses ccache for incremental kernel builds (~2.5 min vs 35 min)
+#    - Pushes to Cachix for reuse by downstream jobs
+# 2. build-sd-image & build-netboot: Run in parallel, reuse cached SoC components
+#    - Build board-specific tools first (orangepi-config, wiringop)
+#    - Pulls SoC components from Cachix (no rebuild needed)
+#    - Only builds board-specific components (initrd, bootloader, filesystem)
+#
+# This avoids rebuilding SoC components and saves ~30-40 minutes per CI run.
+
+jobs:
+  check-flake:
+    name: Flake Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+    
+    - name: Check Nix formatting
+      run: |
+        nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt --check ."
+    
+    - name: Check flake
+      run: nix flake check --no-build
+    
+    - name: Show flake info
+      run: nix flake show
+    
+    - name: Verify kernel version
+      run: |
+        echo "Checking kernel version..."
+        nix eval .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel.version
+
+  build-soc:
+    name: SoC CIX CD8180/CD8160 (Kernel, Drivers, Tools)
+    runs-on: ubuntu-latest
+    needs: check-flake
+    timeout-minutes: 120
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          max-jobs = auto
+          cores = 0
+    
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: i-am-logger
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+    
+    - name: Setup ccache directory
+      run: |
+        sudo mkdir -p /tmp/ccache
+        sudo chown root:nixbld /tmp/ccache
+        sudo chmod 0770 /tmp/ccache
+    
+    - name: Cache ccache
+      uses: actions/cache@v4
+      with:
+        path: /tmp/ccache
+        key: ccache-kernel-${{ runner.os }}-${{ hashFiles('pkgs/kernel/**', 'flake.lock') }}
+        restore-keys: |
+          ccache-kernel-${{ runner.os }}-
+    
+    - name: Build Kernel
+      run: |
+        echo "Building vendor kernel (6.6.89-sky1)..."
+        nix build .#kernel-cross \
+          --print-build-logs \
+          --fallback
+    
+    - name: Build Driver Modules
+      run: |
+        echo "Building all driver modules..."
+        echo "  - Mali-G610 MP4 GPU driver"
+        echo "  - 28.8 TOPS NPU driver (AIPU)"
+        echo "  - ISP driver (ARM Camera Block)"
+        echo "  - VPU driver (MVX Video)"
+        echo ""
+        
+        nix build .#drivers-cross \
+          --print-build-logs \
+          --fallback \
+          --keep-going \
+          --max-jobs auto
+    
+    - name: Build Firmware
+      run: |
+        echo "Building firmware packages..."
+        nix build .#firmware-cross \
+          --print-build-logs \
+          --fallback
+    
+    - name: Build SoC Tools
+      run: |
+        echo "Building CIX Sky1 SoC tools..."
+        echo "  - i3ctransfer (I3C bus transfer)"
+        echo "  - pmtool (Power management)"
+        echo ""
+        
+        nix build .#tools-cross \
+          --print-build-logs \
+          --fallback
+    
+    - name: Show ccache stats
+      run: |
+        echo ""
+        echo "ccache statistics:"
+        ccache --show-stats 2>/dev/null || echo "ccache not available in this build"
+
+  build-orangepi6plus:
+    name: Orange Pi 6 Plus (Board + Tools)
+    runs-on: ubuntu-latest
+    needs: build-soc
+    timeout-minutes: 60
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          max-jobs = auto
+          cores = 0
+    
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: i-am-logger
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+    
+    - name: Build Board Configuration (Orange Pi 6 Plus)
+      run: |
+        echo "Building Orange Pi 6 Plus NixOS system configuration..."
+        echo "This includes all board-specific settings and packages"
+        echo ""
+        
+        # Build the full system configuration (will be used by both SD image and netboot)
+        nix build .#nixosConfigurations.orangepi6plus-cross.config.system.build.toplevel \
+          --print-build-logs \
+          --fallback
+    
+    - name: Build Board Tools (Orange Pi 6 Plus)
+      run: |
+        echo "Building Orange Pi 6 Plus board tools..."
+        echo "  - orangepi-config (hardware configuration)"
+        echo "  - wiringop (GPIO library)"
+        echo ""
+        
+        nix build .#boards-orangepi6plus-tools-cross \
+          --print-build-logs \
+          --fallback
+
+  build-sd-image:
+    name: Orange Pi 6 Plus - SD Card Image
+    runs-on: ubuntu-latest
+    needs: build-orangepi6plus
+    timeout-minutes: 180
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          max-jobs = auto
+          cores = 0
+    
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: i-am-logger
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+    
+    - name: Build SD Card Image (Orange Pi 6 Plus)
+      run: |
+        nix build .#boards-orangepi6plus-sdImage-cross \
+          --print-build-logs \
+          --fallback \
+          --keep-going
+    
+    - name: Get image info
+      id: image_info
+      run: |
+        IMAGE_PATH=$(readlink -f result/sd-image/*.img.zst)
+        IMAGE_NAME=$(basename "$IMAGE_PATH")
+        IMAGE_SIZE=$(du -h "$IMAGE_PATH" | cut -f1)
+        IMAGE_HASH=$(sha256sum "$IMAGE_PATH" | cut -d' ' -f1)
+        echo "path=$IMAGE_PATH" >> $GITHUB_OUTPUT
+        echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
+        echo "size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
+        echo "hash=$IMAGE_HASH" >> $GITHUB_OUTPUT
+    
+    - name: Upload SD Image artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: orangepi6plus-sd-image
+        path: ${{ steps.image_info.outputs.path }}
+        retention-days: 90
+        compression-level: 0
+    
+    outputs:
+      image_name: ${{ steps.image_info.outputs.name }}
+      image_size: ${{ steps.image_info.outputs.size }}
+      image_hash: ${{ steps.image_info.outputs.hash }}
+
+  build-netboot:
+    name: Orange Pi 6 Plus - Netboot
+    runs-on: ubuntu-latest
+    needs: build-orangepi6plus
+    timeout-minutes: 180
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+    
+    - name: Install Nix
+      uses: cachix/install-nix-action@v27
+      with:
+        nix_path: nixpkgs=channel:nixos-unstable
+        extra_nix_config: |
+          experimental-features = nix-command flakes
+          max-jobs = auto
+          cores = 0
+    
+    - name: Setup Cachix
+      uses: cachix/cachix-action@v15
+      with:
+        name: i-am-logger
+        authToken: '${{ secrets.CACHIX_AUTH_TOKEN }}'
+        skipPush: ${{ github.event_name == 'pull_request' }}
+    
+    - name: Build Netboot Package (Orange Pi 6 Plus)
+      run: |
+        nix build .#boards-orangepi6plus-netboot-cross \
+          --print-build-logs \
+          --fallback \
+          --keep-going
+    
+    - name: Package netboot files
+      id: netboot_info
+      run: |
+        # Create tarball from netboot package (dereference symlinks)
+        tar -czhf netboot-orangepi6plus.tar.gz -C result .
+        
+        NETBOOT_SIZE=$(du -h netboot-orangepi6plus.tar.gz | cut -f1)
+        NETBOOT_HASH=$(sha256sum netboot-orangepi6plus.tar.gz | cut -d' ' -f1)
+        echo "size=$NETBOOT_SIZE" >> $GITHUB_OUTPUT
+        echo "hash=$NETBOOT_HASH" >> $GITHUB_OUTPUT
+        
+        echo "Netboot archive contents:"
+        tar -tzf netboot-orangepi6plus.tar.gz
+    
+    - name: Upload Netboot artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: orangepi6plus-netboot
+        path: netboot-orangepi6plus.tar.gz
+        retention-days: 90
+    
+    outputs:
+      netboot_size: ${{ steps.netboot_info.outputs.size }}
+      netboot_hash: ${{ steps.netboot_info.outputs.hash }}
+
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    needs: [build-sd-image, build-netboot]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/master'
+    timeout-minutes: 15
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 0
+    
+    - name: Download SD Image artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: orangepi6plus-sd-image
+        path: ./release-files/
+    
+    - name: Download Netboot artifact
+      uses: actions/download-artifact@v4
+      with:
+        name: orangepi6plus-netboot
+        path: ./release-files/
+    
+    - name: Generate version tag
+      id: version
+      run: |
+        # Get the date in YYYY.MM.DD format
+        DATE_TAG=$(date +%Y.%m.%d)
+        
+        # Get the short commit hash
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        
+        # Generate semantic version: YYYY.MM.DD-{commit}
+        VERSION="v${DATE_TAG}-${SHORT_SHA}"
+        
+        # Check if tag already exists
+        if git rev-parse "$VERSION" >/dev/null 2>&1; then
+          # Add build number if tag exists
+          BUILD_NUM=1
+          while git rev-parse "${VERSION}.${BUILD_NUM}" >/dev/null 2>&1; do
+            BUILD_NUM=$((BUILD_NUM + 1))
+          done
+          VERSION="${VERSION}.${BUILD_NUM}"
+        fi
+        
+        echo "version=$VERSION" >> $GITHUB_OUTPUT
+        echo "Generated version: $VERSION"
+    
+    - name: Create Release
+      uses: softprops/action-gh-release@v2
+      with:
+        tag_name: ${{ steps.version.outputs.version }}
+        name: "Release ${{ steps.version.outputs.version }}"
+        files: ./release-files/*
+        generate_release_notes: true
+        body: |
+          ## 🎉 NixOS for CIX Sky1 SoC - Orange Pi 6 Plus
+          
+          **Auto-generated release from commit `${{ github.sha }}`**
+          
+          This release includes images for the **Orange Pi 6 Plus** board based on the **CIX Sky1 (CD8180/CD8160)** SoC.
+          
+          ### 📦 Release Assets
+          
+          #### SD Card Image
+          - **File**: `${{ needs.build-sd-image.outputs.image_name }}`
+          - **Size**: ${{ needs.build-sd-image.outputs.image_size }}
+          - **SHA256**: `${{ needs.build-sd-image.outputs.image_hash }}`
+          - **Kernel**: Linux 6.6.89-sky1 (vendor)
+          - **Bootloader**: extlinux (U-Boot compatible)
+          
+          #### Network Boot (PXE)
+          - **File**: `netboot-orangepi6plus.tar.gz`
+          - **Size**: ${{ needs.build-netboot.outputs.netboot_size }}
+          - **SHA256**: `${{ needs.build-netboot.outputs.netboot_hash }}`
+          - **Contents**: Kernel, initrd, iPXE script
+          
+          ### 🔧 Hardware Support
+          
+          **SoC Components (CIX Sky1 - CD8180/CD8160):**
+          - ✅ Mali-G610 MP4 GPU (cix-gpu-umd)
+          - ✅ 28.8 TOPS NPU (cix-npu-umd)
+          - ✅ ISP - Image Signal Processor (cix-isp-umd)
+          - ✅ VPU - Video Processing Unit (cix-vpu-firmware)
+          - ✅ Firmware files (cix-firmware)
+          - ✅ SoC tools - I3C, Power Management (cix-tools)
+          
+          **Board Components (Orange Pi 6 Plus):**
+          - ✅ RTL8126 2.5GbE Ethernet
+          - ✅ NVMe M.2 SSD support
+          - ✅ USB 3.0/2.0 ports
+          - ✅ Board tools - orangepi-config, wiringop (GPIO)
+          
+          ### 💾 Quick Start - SD Card
+          
+          ```bash
+          # Download
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/${{ needs.build-sd-image.outputs.image_name }}
+          
+          # Verify
+          echo "${{ needs.build-sd-image.outputs.image_hash }}  ${{ needs.build-sd-image.outputs.image_name }}" | sha256sum -c
+          
+          # Decompress & Flash
+          zstd -d ${{ needs.build-sd-image.outputs.image_name }}
+          sudo dd if=nixos-image-sd-card-*.img of=/dev/sdX bs=4M status=progress conv=fsync
+          ```
+          
+          ### 🌐 Quick Start - Network Boot
+          
+          ```bash
+          # Download
+          wget https://github.com/${{ github.repository }}/releases/download/${{ steps.version.outputs.version }}/netboot-orangepi6plus.tar.gz
+          
+          # Verify
+          echo "${{ needs.build-netboot.outputs.netboot_hash }}  netboot-orangepi6plus.tar.gz" | sha256sum -c
+          
+          # Extract to TFTP/HTTP server
+          tar -xzf netboot-orangepi6plus.tar.gz -C /srv/tftp/i-am-logger/
+          ```
+          
+          ### 🔑 Default Credentials
+          
+          - **Username**: `nixos`
+          - **Password**: `nixos`
+          - **SSH**: Enabled (port 22)
+          
+          ⚠️ **Change password immediately after first boot!**
+          
+          ```bash
+          # After first login
+          passwd              # Change user password
+          sudo passwd root    # Change root password
+          ```
+          
+          ### 📚 Documentation
+          
+          - [README & Configuration Guide](https://github.com/${{ github.repository }})
+          - [Architecture Details](https://github.com/${{ github.repository }}/blob/master/ARCHITECTURE.md)
+          - [Configuration Examples](https://github.com/${{ github.repository }}/tree/master/examples)
+          
+          ### 🏗️ Build Information
+          
+          - **Commit**: `${{ github.sha }}`
+          - **NixOS**: 26.05 (unstable)
+          - **Build**: Cross-compiled (x86_64 → aarch64)
+          - **License**: CC BY-NC-SA 4.0
+          
+          ### ℹ️ Version Format
+          
+          Version tag format: `vYYYY.MM.DD-{commit}`
+          
+          This ensures every successful build on `master` branch creates a unique, dated release.
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

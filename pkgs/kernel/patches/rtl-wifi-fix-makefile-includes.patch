@@ -1,0 +1,44 @@
+# Fix Makefile include paths for RTL8811CU and RTL88X2BU WiFi drivers
+#
+# These drivers use EXTRA_CFLAGS += -I$(src)/include which doesn't work
+# in kernel builds. Changed to ccflags-y with proper $(srctree)/$(src)
+# prefixes for all necessary include directories (core, crypto, platform,
+# hal/phydm subdirectories).
+#
+# Enables proper header resolution during out-of-tree module compilation.
+
+--- a/drivers/net/wireless/rtl8811cu/Makefile
++++ b/drivers/net/wireless/rtl8811cu/Makefile
+@@ -37,7 +37,13 @@ ifeq ($(GCC_VER_49),1)
+ EXTRA_CFLAGS += -Wno-date-time	# Fix compile error && warning on gcc 4.9 and later
+ endif
+ 
+-EXTRA_CFLAGS += -I$(src)/include
++ccflags-y += -I$(srctree)/$(src)/include
++ccflags-y += -I$(srctree)/$(src)/core
++ccflags-y += -I$(srctree)/$(src)/core/crypto
++ccflags-y += -I$(srctree)/$(src)/platform
++ccflags-y += -I$(srctree)/$(src)/hal/phydm
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/halrf
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/txbf
+ 
+ EXTRA_LDFLAGS += --strip-debug
+ 
+--- a/drivers/net/wireless/rtl88x2bu/Makefile
++++ b/drivers/net/wireless/rtl88x2bu/Makefile
+@@ -27,8 +27,13 @@ GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
+ ifeq ($(GCC_VER_49),1)
+ EXTRA_CFLAGS += -Wno-date-time	# Fix compile error && warning on gcc 4.9 and later
+ endif
+-
+-EXTRA_CFLAGS += -I$(src)/include
++ccflags-y += -I$(srctree)/$(src)/include
++ccflags-y += -I$(srctree)/$(src)/core
++ccflags-y += -I$(srctree)/$(src)/core/crypto
++ccflags-y += -I$(srctree)/$(src)/platform
++ccflags-y += -I$(srctree)/$(src)/hal/phydm
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/halrf
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/txbf
+ 
+ EXTRA_LDFLAGS += --strip-debug
+ 

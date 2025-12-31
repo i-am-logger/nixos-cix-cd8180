@@ -1,0 +1,448 @@
+# Fix HALRF include paths for RTL8192EU and RTL8812AU WiFi drivers
+#
+# Multiple header files in hal/phydm/halrf/ use incorrect include paths with
+# "halrf/" prefix (e.g., #include "halrf/halrf_kfree.h"). Since the compiler
+# is already in the halrf directory, these should be relative paths without
+# the prefix (e.g., #include "halrf_kfree.h").
+#
+# Also adds hal/phydm/halrf to EXTRA_CFLAGS in phydm.mk Makefiles.
+#
+# Fixes numerous "file not found" errors during compilation.
+
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_ap.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_ap.h
+@@ -16,35 +16,35 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_powertracking_ap.h"
+-#include "halrf/halrf_kfree.h"
++#include "halrf_powertracking_ap.h"
++#include "halrf_kfree.h"
+ 
+ #if (RTL8814A_SUPPORT == 1)
+-	#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++	#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-	#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++	#include "rtl8822b/halrf_iqk_8822b.h"
+ #endif
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8198F_SUPPORT == 1)
+-	#include "halrf/rtl8198f/halrf_iqk_8198f.h"
+-	#include "halrf/rtl8198f/halrf_dpk_8198f.h"
++	#include "rtl8198f/halrf_iqk_8198f.h"
++	#include "rtl8198f/halrf_dpk_8198f.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ enum pwrtrack_method {
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_ce.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_ce.h
+@@ -26,31 +26,31 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_kfree.h"
++#include "halrf_kfree.h"
+ #if (RTL8814A_SUPPORT == 1)
+-#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++#include "rtl8822b/halrf_iqk_8822b.h"
+ #endif
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-/* #include "halrf/rtl8195b/halrf.h" */
+-#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++/* #include "rtl8195b/halrf.h" */
++#include "rtl8195b/halrf_iqk_8195b.h"
++#include "rtl8195b/halrf_txgapk_8195b.h"
++#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+-#include "halrf/halrf_powertracking_ce.h"
++#include "halrf_powertracking_ce.h"
+ 
+ enum spur_cal_method {
+ 	PLL_RESET,
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_iot.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_iot.h
+@@ -26,20 +26,20 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_kfree.h"
++#include "halrf_kfree.h"
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+-#include "halrf/halrf_powertracking_iot.h"
++#include "halrf_powertracking_iot.h"
+ 
+ 
+ enum spur_cal_method {
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_win.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halphyrf_win.h
+@@ -17,29 +17,29 @@
+ #define __HALPHYRF_H__
+ 
+ #if (RTL8814A_SUPPORT == 1)
+-	#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++	#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-	#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++	#include "rtl8822b/halrf_iqk_8822b.h"
+ 	#include "../mac/Halmac_type.h"
+ #endif
+-#include "halrf/halrf_powertracking_win.h"
+-#include "halrf/halrf_kfree.h"
+-#include "halrf/halrf_txgapcal.h"
++#include "halrf_powertracking_win.h"
++#include "halrf_kfree.h"
++#include "halrf_txgapcal.h"
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ enum spur_cal_method {
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halrf.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/halrf.h
+@@ -29,26 +29,26 @@
+ /*@============================================================*/
+ /*@include files*/
+ /*@============================================================*/
+-#include "halrf/halrf_psd.h"
++#include "halrf_psd.h"
+ #if (RTL8822B_SUPPORT == 1)
+-#include "halrf/rtl8822b/halrf_rfk_init_8822b.h"
++#include "rtl8822b/halrf_rfk_init_8822b.h"
+ #endif
+ #if (RTL8822C_SUPPORT == 1)
+-#include "halrf/rtl8822c/halrf_rfk_init_8822c.h"
+-#include "halrf/rtl8822c/halrf_iqk_8822c.h"
+-#include "halrf/rtl8822c/halrf_tssi_8822c.h"
+-#include "halrf/rtl8822c/halrf_dpk_8822c.h"
++#include "rtl8822c/halrf_rfk_init_8822c.h"
++#include "rtl8822c/halrf_iqk_8822c.h"
++#include "rtl8822c/halrf_tssi_8822c.h"
++#include "rtl8822c/halrf_dpk_8822c.h"
+ #endif
+ 
+ #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
+ #if (RTL8198F_SUPPORT == 1)
+-#include "halrf/rtl8198f/halrf_rfk_init_8198f.h"
++#include "rtl8198f/halrf_rfk_init_8198f.h"
+ #endif
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-#include "halrf/rtl8814b/halrf_rfk_init_8814b.h"
+-#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++#include "rtl8814b/halrf_rfk_init_8814b.h"
++#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ /*@============================================================*/
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/rtl8192e/halrf_8192e_win.h
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/halrf/rtl8192e/halrf_8192e_win.h
+@@ -27,7 +27,7 @@
+ #define AVG_THERMAL_NUM_92E	4
+ #define	RF_T_METER_92E			0x42
+ 
+-#include "halrf/halphyrf_win.h"
++#include "halphyrf_win.h"
+ 
+ void configure_txpower_track_8192e(
+ 	struct txpwrtrack_cfg	*config
+--- a/drivers/net/wireless/rtl8192eu/hal/phydm/phydm.mk
++++ b/drivers/net/wireless/rtl8192eu/hal/phydm/phydm.mk
+@@ -1,4 +1,5 @@
+ EXTRA_CFLAGS += -I$(src)/hal/phydm
++EXTRA_CFLAGS += -I$(src)/hal/phydm/halrf
+ 
+ _PHYDM_FILES := hal/phydm/phydm_debug.o	\
+ 								hal/phydm/phydm_antdiv.o\
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_ap.h
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_ap.h
+@@ -16,35 +16,35 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_powertracking_ap.h"
+-#include "halrf/halrf_kfree.h"
++#include "halrf_powertracking_ap.h"
++#include "halrf_kfree.h"
+ 
+ #if (RTL8814A_SUPPORT == 1)
+-	#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++	#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-	#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++	#include "rtl8822b/halrf_iqk_8822b.h"
+ #endif
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8198F_SUPPORT == 1)
+-	#include "halrf/rtl8198f/halrf_iqk_8198f.h"
+-	#include "halrf/rtl8198f/halrf_dpk_8198f.h"
++	#include "rtl8198f/halrf_iqk_8198f.h"
++	#include "rtl8198f/halrf_dpk_8198f.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ enum pwrtrack_method {
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_ce.h
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_ce.h
+@@ -26,31 +26,31 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_kfree.h"
++#include "halrf_kfree.h"
+ #if (RTL8814A_SUPPORT == 1)
+-#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++#include "rtl8822b/halrf_iqk_8822b.h"
+ #endif
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-/* #include "halrf/rtl8195b/halrf.h" */
+-#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++/* #include "rtl8195b/halrf.h" */
++#include "rtl8195b/halrf_iqk_8195b.h"
++#include "rtl8195b/halrf_txgapk_8195b.h"
++#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+-#include "halrf/halrf_powertracking_ce.h"
++#include "halrf_powertracking_ce.h"
+ 
+ enum spur_cal_method {
+ 	PLL_RESET,
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_iot.h
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_iot.h
+@@ -26,20 +26,20 @@
+ #ifndef __HALPHYRF_H__
+ #define __HALPHYRF_H__
+ 
+-#include "halrf/halrf_kfree.h"
++#include "halrf_kfree.h"
+ 
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+-#include "halrf/halrf_powertracking_iot.h"
++#include "halrf_powertracking_iot.h"
+ 
+ 
+ enum spur_cal_method {
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_win.h
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halphyrf_win.h
+@@ -17,29 +17,29 @@
+ #define __HALPHYRF_H__
+ 
+ #if (RTL8814A_SUPPORT == 1)
+-	#include "halrf/rtl8814a/halrf_iqk_8814a.h"
++	#include "rtl8814a/halrf_iqk_8814a.h"
+ #endif
+ 
+ #if (RTL8822B_SUPPORT == 1)
+-	#include "halrf/rtl8822b/halrf_iqk_8822b.h"
++	#include "rtl8822b/halrf_iqk_8822b.h"
+ 	#include "../mac/Halmac_type.h"
+ #endif
+-#include "halrf/halrf_powertracking_win.h"
+-#include "halrf/halrf_kfree.h"
+-#include "halrf/halrf_txgapcal.h"
++#include "halrf_powertracking_win.h"
++#include "halrf_kfree.h"
++#include "halrf_txgapcal.h"
+ #if (RTL8821C_SUPPORT == 1)
+-	#include "halrf/rtl8821c/halrf_iqk_8821c.h"
++	#include "rtl8821c/halrf_iqk_8821c.h"
+ #endif
+ 
+ #if (RTL8195B_SUPPORT == 1)
+-//	#include "halrf/rtl8195b/halrf.h"
+-	#include "halrf/rtl8195b/halrf_iqk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_txgapk_8195b.h"
+-	#include "halrf/rtl8195b/halrf_dpk_8195b.h"
++//	#include "rtl8195b/halrf.h"
++	#include "rtl8195b/halrf_iqk_8195b.h"
++	#include "rtl8195b/halrf_txgapk_8195b.h"
++	#include "rtl8195b/halrf_dpk_8195b.h"
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-	#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++	#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ enum spur_cal_method {
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halrf.h
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/halrf/halrf.h
+@@ -29,26 +29,26 @@
+ /*@============================================================*/
+ /*@include files*/
+ /*@============================================================*/
+-#include "halrf/halrf_psd.h"
++#include "halrf_psd.h"
+ #if (RTL8822B_SUPPORT == 1)
+-#include "halrf/rtl8822b/halrf_rfk_init_8822b.h"
++#include "rtl8822b/halrf_rfk_init_8822b.h"
+ #endif
+ #if (RTL8822C_SUPPORT == 1)
+-#include "halrf/rtl8822c/halrf_rfk_init_8822c.h"
+-#include "halrf/rtl8822c/halrf_iqk_8822c.h"
+-#include "halrf/rtl8822c/halrf_tssi_8822c.h"
+-#include "halrf/rtl8822c/halrf_dpk_8822c.h"
++#include "rtl8822c/halrf_rfk_init_8822c.h"
++#include "rtl8822c/halrf_iqk_8822c.h"
++#include "rtl8822c/halrf_tssi_8822c.h"
++#include "rtl8822c/halrf_dpk_8822c.h"
+ #endif
+ 
+ #if (DM_ODM_SUPPORT_TYPE & ODM_AP)
+ #if (RTL8198F_SUPPORT == 1)
+-#include "halrf/rtl8198f/halrf_rfk_init_8198f.h"
++#include "rtl8198f/halrf_rfk_init_8198f.h"
+ #endif
+ #endif
+ 
+ #if (RTL8814B_SUPPORT == 1)
+-#include "halrf/rtl8814b/halrf_rfk_init_8814b.h"
+-#include "halrf/rtl8814b/halrf_iqk_8814b.h"
++#include "rtl8814b/halrf_rfk_init_8814b.h"
++#include "rtl8814b/halrf_iqk_8814b.h"
+ #endif
+ 
+ /*@============================================================*/
+--- a/drivers/net/wireless/rtl8812au/hal/phydm/phydm.mk
++++ b/drivers/net/wireless/rtl8812au/hal/phydm/phydm.mk
+@@ -1,4 +1,5 @@
+ EXTRA_CFLAGS += -I$(src)/hal/phydm
++EXTRA_CFLAGS += -I$(src)/hal/phydm/halrf
+ 
+ _PHYDM_FILES := hal/phydm/phydm_debug.o	\
+ 								hal/phydm/phydm_antdiv.o\

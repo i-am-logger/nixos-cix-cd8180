@@ -1,0 +1,25 @@
+# Fix RTL8812AU WiFi driver Makefile include paths
+#
+# Converts from EXTRA_CFLAGS += -I$(src)/include to proper ccflags-y
+# with $(srctree)/$(src) prefixes. Adds include paths for core, crypto,
+# platform, and hal/phydm subdirectories needed for compilation.
+#
+# Fixes include path resolution in out-of-tree kernel module build.
+
+--- a/drivers/net/wireless/rtl8812au/Makefile
++++ b/drivers/net/wireless/rtl8812au/Makefile
+@@ -20,7 +20,13 @@ EXTRA_CFLAGS += -Wno-unknown-pragmas
+ EXTRA_CFLAGS += -Wno-address
+ EXTRA_CFLAGS += -Wno-vla -g
+ 
+-EXTRA_CFLAGS += -I$(src)/include
++ccflags-y += -I$(srctree)/$(src)/include
++ccflags-y += -I$(srctree)/$(src)/core
++ccflags-y += -I$(srctree)/$(src)/core/crypto
++ccflags-y += -I$(srctree)/$(src)/platform
++ccflags-y += -I$(srctree)/$(src)/hal/phydm
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/halrf
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/txbf
+ EXTRA_LDFLAGS += --strip-all -O3
+ 
+ ########################## WIFI IC ############################

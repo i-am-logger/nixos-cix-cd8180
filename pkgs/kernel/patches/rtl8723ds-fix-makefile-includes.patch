@@ -1,0 +1,28 @@
+# Fix RTL8723DS WiFi driver Makefile include paths
+#
+# Converts from EXTRA_CFLAGS += -I$(src)/include to proper ccflags-y
+# with $(srctree)/$(src) prefixes. Adds include paths for core, crypto,
+# platform, hal/phydm subdirectories, and hal/btc (Bluetooth coexistence).
+#
+# Fixes include path resolution in out-of-tree kernel module build.
+
+--- a/drivers/net/wireless/rtl8723ds/Makefile
++++ b/drivers/net/wireless/rtl8723ds/Makefile
+@@ -19,8 +19,14 @@ GCC_VER_49 := $(shell echo `$(CC) -dumpversion | cut -f1-2 -d.` \>= 4.9 | bc )
+ ifeq ($(GCC_VER_49),1)
+ EXTRA_CFLAGS += -Wno-date-time	# Fix compile error && warning on gcc 4.9 and later
+ endif
+ 
+-EXTRA_CFLAGS += -I$(src)/include
+-EXTRA_CFLAGS += -I$(src)/hal/phydm
++ccflags-y += -I$(srctree)/$(src)/include
++ccflags-y += -I$(srctree)/$(src)/core
++ccflags-y += -I$(srctree)/$(src)/core/crypto
++ccflags-y += -I$(srctree)/$(src)/platform
++ccflags-y += -I$(srctree)/$(src)/hal/phydm
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/halrf
++ccflags-y += -I$(srctree)/$(src)/hal/phydm/txbf
++ccflags-y += -I$(srctree)/$(src)/hal/btc
+ 
+ EXTRA_LDFLAGS += --strip-debug
+ 
