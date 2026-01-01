@@ -4,39 +4,38 @@ This guide covers all installation methods for NixOS on CIX CD8180/CD8160 (Sky1)
 
 ## Prerequisites
 
-- NixOS or Linux system with Nix installed
-- For cross-compilation: x86_64 system
-- For native builds: aarch64 system
+- Linux system with `zstd` and `dd` utilities
+- SD card (16GB or larger recommended)
+- For network boot: TFTP/HTTP server
 
 ## Installation Methods
 
 ### Option 1: SD Card Boot
 
-Build an image, flash to SD card, and boot.
+Download a pre-built image, flash to SD card, and boot.
 
-#### 1. Build SD Card Image
+#### 1. Download SD Card Image
 
-**Cross-compile from x86_64** (recommended):
+Go to the [latest release](https://github.com/i-am-logger/nixos-cix-cd8180/releases/latest) and download the SD card image:
+
 ```bash
-nix build .#orangepi6plus-sdImage-cross
+# Download the latest SD image
+wget https://github.com/i-am-logger/nixos-cix-cd8180/releases/latest/download/nixos-orangepi6plus-sd-image-<VERSION>-aarch64-linux.img.zst
 ```
 
-**Native build on aarch64**:
-```bash
-nix build .#orangepi6plus-sdImage
-```
-
-The image will be in `result/sd-image/nixos-image-*.img.zst`
+Replace `<VERSION>` with the actual version from the release page (e.g., `2026.01.01-9d6dbab`).
 
 #### 2. Flash to SD Card
 
 ```bash
 # Decompress and flash
-zstd -d result/sd-image/*.img.zst
-sudo dd if=result/sd-image/*.img of=/dev/sdX bs=4M status=progress conv=fsync
+zstd -d nixos-orangepi6plus-sd-image-*.img.zst
+sudo dd if=nixos-orangepi6plus-sd-image-*.img of=/dev/sdX bs=4M status=progress conv=fsync
 ```
 
 Replace `/dev/sdX` with your SD card device (check with `lsblk`).
+
+⚠️ **Warning**: Double-check the device name - `dd` will overwrite the entire device!
 
 #### 3. Boot
 
@@ -44,7 +43,22 @@ Replace `/dev/sdX` with your SD card device (check with `lsblk`).
 2. Power on the board
 3. The board should boot via UEFI
 
+**Default credentials:**
+- Username: `nixos`
+- Password: `nixos`
+- SSH: Enabled (port 22)
+
+⚠️ **Change the password immediately after first boot:**
+```bash
+passwd              # Change user password
+sudo passwd root    # Change root password
+```
+
 **Note**: Board requires UEFI firmware (pre-installed on Orange Pi 6 Plus).
+
+#### Building from Source
+
+If you want to build the image yourself instead of using pre-built releases, see [Development Guide](development.md#building-images).
 
 ---
 
@@ -115,33 +129,37 @@ Remove the SD card and reboot. The UEFI firmware will automatically boot from th
 
 Boot over the network without local storage.
 
-#### 1. Build Netboot Components
+#### 1. Download Netboot Package
 
-**Cross-compile from x86_64** (recommended):
-```bash
-nix build .#orangepi6plus-netboot-cross
-```
-
-**Native build on aarch64**:
-```bash
-nix build .#orangepi6plus-netboot
-```
-
-This creates a single package with:
-- `result/kernel` - Linux kernel
-- `result/initrd` - Initial ramdisk
-- `result/netboot.ipxe` - iPXE boot script
-
-#### 2. Setup TFTP/HTTP Server
-
-Copy the files to your PXE server:
+Go to the [latest release](https://github.com/i-am-logger/nixos-cix-cd8180/releases/latest) and download the netboot archive:
 
 ```bash
-# Example TFTP layout
-cp result/kernel /srv/tftp/nixos-cix-cd8180/kernel
-cp result/initrd /srv/tftp/nixos-cix-cd8180/initrd
-cp result/netboot.ipxe /srv/tftp/nixos-cix-cd8180/boot.ipxe
+# Download the latest netboot package
+wget https://github.com/i-am-logger/nixos-cix-cd8180/releases/latest/download/nixos-orangepi6plus-netboot-<VERSION>-aarch64-linux.tar.gz
 ```
+
+Replace `<VERSION>` with the actual version from the release page (e.g., `2026.01.01-9d6dbab`).
+
+#### 2. Extract and Setup TFTP/HTTP Server
+
+The tarball contains files at the root level (no subdirectory). Extract directly to your PXE server directory:
+
+```bash
+# Create directory for netboot files
+sudo mkdir -p /srv/tftp/nixos-cix-cd8180
+
+# Extract archive directly to TFTP directory
+# The tarball contains files at root level, so they extract directly to the target directory
+sudo tar -xzf nixos-orangepi6plus-netboot-*.tar.gz -C /srv/tftp/nixos-cix-cd8180/
+
+# Rename iPXE script for easier chainloading
+sudo mv /srv/tftp/nixos-cix-cd8180/netboot.ipxe /srv/tftp/nixos-cix-cd8180/boot.ipxe
+```
+
+This places the following files in `/srv/tftp/nixos-cix-cd8180/`:
+- `kernel` - Linux kernel
+- `initrd` - Initial ramdisk  
+- `boot.ipxe` - iPXE boot script (renamed from `netboot.ipxe`)
 
 #### 3. Configure iPXE
 
@@ -166,12 +184,27 @@ chain tftp://your-server/nixos-cix-cd8180/boot.ipxe
 3. Select "Network Boot" or "PXE Boot"
 4. Board will download kernel and initrd from your server
 
+**Default credentials:**
+- Username: `nixos`
+- Password: `nixos`
+- SSH: Enabled (port 22)
+
+⚠️ **Change the password immediately after first boot:**
+```bash
+passwd              # Change user password
+sudo passwd root    # Change root password
+```
+
 #### Network Boot Features
 
 - Deploy to multiple boards
 - No SD card or local storage required
 - Update by replacing files on server
 - Suitable for testing and development
+
+#### Building from Source
+
+If you want to build the netboot package yourself instead of using pre-built releases, see [Development Guide](development.md#building-images).
 
 #### Example PXE Server Setup
 
@@ -192,7 +225,12 @@ dhcp-boot=tag:efi-arm64,nixos-cix-cd8180/boot.ipxe
 
 ## Post-Installation
 
-For configuration examples, see your board's documentation.
+For NixOS configuration examples, see the [examples directory](../examples/):
+- [Minimal Configuration](../examples/minimal.nix) - Basic setup
+- [Desktop Configuration](../examples/desktop.nix) - Desktop environment with GPU support
+- [AI Workstation](../examples/ai-workstation.nix) - Full setup with NPU, GPU, ISP drivers
+
+Board-specific details: [Orange Pi 6 Plus Documentation](boards/orangepi-6-plus.md)
 
 ## Troubleshooting
 

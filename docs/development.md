@@ -84,18 +84,41 @@ nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt --check ."
 nix flake check
 ```
 
-### Building Board Images
+### Building Images
+
+Most users should download [pre-built releases](https://github.com/i-am-logger/nixos-cix-cd8180/releases/latest). Build from source only if you need custom modifications.
+
+#### SD Card Image
+
+**Cross-compile from x86_64** (recommended):
+```bash
+nix build .#orangepi6plus-sdImage-cross --print-build-logs
+```
+
+**Native build on aarch64**:
+```bash
+nix build .#orangepi6plus-sdImage --print-build-logs
+```
+
+The image will be in `result/sd-image/nixos-orangepi6plus-sd-image-*.img.zst`
+
+#### Network Boot Package
+
+**Cross-compile from x86_64** (recommended):
+```bash
+nix build .#orangepi6plus-netboot-cross --print-build-logs
+```
+
+**Native build on aarch64**:
+```bash
+nix build .#orangepi6plus-netboot --print-build-logs
+```
+
+The netboot archive will be in `result/nixos-orangepi6plus-netboot-*.tar.gz`
+
+#### Board Tools
 
 ```bash
-# SD Card Image
-nix build .#orangepi6plus-sdImage-cross --print-build-logs  # x86_64 → aarch64
-nix build .#orangepi6plus-sdImage --print-build-logs        # aarch64 native
-
-# Network Boot
-nix build .#orangepi6plus-netboot-cross --print-build-logs  # x86_64 → aarch64
-nix build .#orangepi6plus-netboot --print-build-logs        # aarch64 native
-
-# Board Tools
 nix build .#orangepi6plus-tools-cross  # orangepi-config, wiringop
 ```
 
