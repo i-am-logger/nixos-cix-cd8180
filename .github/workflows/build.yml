@@ -231,22 +231,41 @@ jobs:
           --fallback \
           --keep-going
     
-    - name: Get image info
+    - name: Rename and get image info
       id: image_info
       run: |
+        # Get version components for standardized naming
+        DATE_TAG=$(date +%Y.%m.%d)
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        VERSION="${DATE_TAG}-${SHORT_SHA}"
+        ARCH="aarch64-linux"
+        BOARD="orangepi6plus"
+        
+        # Find original image
         IMAGE_PATH=$(readlink -f result/sd-image/*.img.zst)
-        IMAGE_NAME=$(basename "$IMAGE_PATH")
-        IMAGE_SIZE=$(du -h "$IMAGE_PATH" | cut -f1)
-        IMAGE_HASH=$(sha256sum "$IMAGE_PATH" | cut -d' ' -f1)
-        echo "path=$IMAGE_PATH" >> $GITHUB_OUTPUT
-        echo "name=$IMAGE_NAME" >> $GITHUB_OUTPUT
-        echo "size=$IMAGE_SIZE" >> $GITHUB_OUTPUT
-        echo "hash=$IMAGE_HASH" >> $GITHUB_OUTPUT
+        
+        # Rename to standard format: nixos-{board}-sd-image-{version}-{arch}.img.zst
+        NEW_IMAGE_NAME="nixos-${BOARD}-sd-image-${VERSION}-${ARCH}.img.zst"
+        cp "$IMAGE_PATH" "./${NEW_IMAGE_NAME}"
+        
+        # Calculate metadata
+        IMAGE_SIZE=$(du -h "./${NEW_IMAGE_NAME}" | cut -f1)
+        IMAGE_HASH=$(sha256sum "./${NEW_IMAGE_NAME}" | cut -d' ' -f1)
+        
+        echo "path=./${NEW_IMAGE_NAME}" >> $GITHUB_OUTPUT
+        echo "name=${NEW_IMAGE_NAME}" >> $GITHUB_OUTPUT
+        echo "artifact_name=nixos-${BOARD}-sd-image-${VERSION}-${ARCH}" >> $GITHUB_OUTPUT
+        echo "size=${IMAGE_SIZE}" >> $GITHUB_OUTPUT
+        echo "hash=${IMAGE_HASH}" >> $GITHUB_OUTPUT
+        
+        echo "Renamed SD image to: ${NEW_IMAGE_NAME}"
+        echo "Size: ${IMAGE_SIZE}"
+        echo "SHA256: ${IMAGE_HASH}"
     
     - name: Upload SD Image artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nixos-orangepi6plus-sd-image
+        name: ${{ steps.image_info.outputs.artifact_name }}
         path: ${{ steps.image_info.outputs.path }}
         retention-days: 90
         compression-level: 0
@@ -255,6 +274,7 @@ jobs:
       image_name: ${{ steps.image_info.outputs.name }}
       image_size: ${{ steps.image_info.outputs.size }}
       image_hash: ${{ steps.image_info.outputs.hash }}
+      artifact_name: ${{ steps.image_info.outputs.artifact_name }}
 
   build-netboot:
     name: Orange Pi 6 Plus - Netboot
@@ -289,31 +309,69 @@ jobs:
           --fallback \
           --keep-going
     
-    - name: Package netboot files
+    - name: Rename netboot tarball
       id: netboot_info
       run: |
-        # Create tarball from netboot package (dereference symlinks)
-        tar -czhf nixos-orangepi6plus-netboot.tar.gz -C result .
+        # Get version components for standardized naming
+        DATE_TAG=$(date +%Y.%m.%d)
+        SHORT_SHA=$(git rev-parse --short HEAD)
+        VERSION="${DATE_TAG}-${SHORT_SHA}"
+        ARCH="aarch64-linux"
+        BOARD="orangepi6plus"
         
-        NETBOOT_SIZE=$(du -h nixos-orangepi6plus-netboot.tar.gz | cut -f1)
-        NETBOOT_HASH=$(sha256sum nixos-orangepi6plus-netboot.tar.gz | cut -d' ' -f1)
-        echo "size=$NETBOOT_SIZE" >> $GITHUB_OUTPUT
-        echo "hash=$NETBOOT_HASH" >> $GITHUB_OUTPUT
+        # Find the tarball created by Nix (has NixOS version)
+        # The tarball is a regular file in the result directory
+        echo "Looking for tarball in result directory..."
+        ls -la result/
         
+        # The tarball has a predictable name pattern, just glob for it
+        NETBOOT_ORIG=$(ls result/*.tar.gz 2>/dev/null | head -1)
+        
+        if [ -z "$NETBOOT_ORIG" ]; then
+          echo "ERROR: Netboot tarball not found"
+          echo "Result directory contents:"
+          ls -laR result/
+          exit 1
+        fi
+        
+        echo "Found tarball: $NETBOOT_ORIG"
+        
+        # Rename to match release tag version: nixos-{board}-netboot-{version}-{arch}.tar.gz
+        NETBOOT_NAME="nixos-${BOARD}-netboot-${VERSION}-${ARCH}.tar.gz"
+        cp "$NETBOOT_ORIG" "./${NETBOOT_NAME}"
+        
+        # Calculate metadata
+        NETBOOT_SIZE=$(du -h "${NETBOOT_NAME}" | cut -f1)
+        NETBOOT_HASH=$(sha256sum "${NETBOOT_NAME}" | cut -d' ' -f1)
+        
+        echo "path=${NETBOOT_NAME}" >> $GITHUB_OUTPUT
+        echo "name=${NETBOOT_NAME}" >> $GITHUB_OUTPUT
+        echo "artifact_name=nixos-${BOARD}-netboot-${VERSION}-${ARCH}" >> $GITHUB_OUTPUT
+        echo "size=${NETBOOT_SIZE}" >> $GITHUB_OUTPUT
+        echo "hash=${NETBOOT_HASH}" >> $GITHUB_OUTPUT
+        
+        echo "Renamed netboot tarball:"
+        echo "  FROM: $(basename "$NETBOOT_ORIG")"
+        echo "  TO:   ${NETBOOT_NAME}"
+        echo "Size: ${NETBOOT_SIZE}"
+        echo "SHA256: ${NETBOOT_HASH}"
+        echo ""
         echo "Netboot archive contents:"
-        tar -tzf nixos-orangepi6plus-netboot.tar.gz
+        tar -tzf "${NETBOOT_NAME}"
     
     - name: Upload Netboot artifact
       uses: actions/upload-artifact@v4
       with:
-        name: nixos-orangepi6plus-netboot
-        path: nixos-orangepi6plus-netboot.tar.gz
+        name: ${{ steps.netboot_info.outputs.artifact_name }}
+        path: ${{ steps.netboot_info.outputs.path }}
         retention-days: 90
         compression-level: 0
     
     outputs:
+      netboot_name: ${{ steps.netboot_info.outputs.name }}
       netboot_size: ${{ steps.netboot_info.outputs.size }}
       netboot_hash: ${{ steps.netboot_info.outputs.hash }}
+      artifact_name: ${{ steps.netboot_info.outputs.artifact_name }}
 
   create-release:
     name: Create Release
@@ -333,13 +391,13 @@ jobs:
     - name: Download SD Image artifact
       uses: actions/download-artifact@v4
       with:
-        name: nixos-orangepi6plus-sd-image
+        name: ${{ needs.build-sd-image.outputs.artifact_name }}
         path: ./release-files/
     
     - name: Download Netboot artifact
       uses: actions/download-artifact@v4
       with:
-        name: nixos-orangepi6plus-netboot
+        name: ${{ needs.build-netboot.outputs.artifact_name }}
         path: ./release-files/
     
     - name: Generate version tag
@@ -367,6 +425,33 @@ jobs:
         echo "version=$VERSION" >> $GITHUB_OUTPUT
         echo "Generated version: $VERSION"
     
+    - name: Verify release assets
+      id: verify
+      run: |
+        echo "Verifying release assets..."
+        ls -lh release-files/
+        echo ""
+        
+        # Assets are already correctly named from build jobs
+        cd release-files
+        
+        SD_IMAGE=$(find . -name "*-sd-image-*.img.zst" | head -1)
+        NETBOOT=$(find . -name "*-netboot-*.tar.gz" | head -1)
+        
+        if [ -n "$SD_IMAGE" ]; then
+          echo "✓ SD Image: $(basename "$SD_IMAGE")"
+        else
+          echo "⚠ Warning: SD image not found"
+        fi
+        
+        if [ -n "$NETBOOT" ]; then
+          echo "✓ Netboot: $(basename "$NETBOOT")"
+        else
+          echo "⚠ Warning: Netboot archive not found"
+        fi
+        
+        cd ..
+    
     - name: Create Release
       uses: softprops/action-gh-release@v2
       with:
@@ -385,13 +470,15 @@ jobs:
           - **File**: `${{ needs.build-sd-image.outputs.image_name }}`
           - **Size**: ${{ needs.build-sd-image.outputs.image_size }}
           - **SHA256**: `${{ needs.build-sd-image.outputs.image_hash }}`
+          - **NixOS Version**: 26.05 (unstable, based on nixpkgs commit c0b0e0f)
           - **Kernel**: Linux 6.6.89-sky1 (vendor)
           - **Bootloader**: extlinux (U-Boot compatible)
           
           #### Network Boot (PXE)
-          - **File**: `nixos-orangepi6plus-netboot.tar.gz`
+          - **File**: `${{ needs.build-netboot.outputs.netboot_name }}`
           - **Size**: ${{ needs.build-netboot.outputs.netboot_size }}
           - **SHA256**: `${{ needs.build-netboot.outputs.netboot_hash }}`
+          - **NixOS Version**: 26.05 (unstable, based on nixpkgs commit c0b0e0f)
           - **Contents**: Kernel, initrd, iPXE script
           
           ### 🔧 Hardware Support

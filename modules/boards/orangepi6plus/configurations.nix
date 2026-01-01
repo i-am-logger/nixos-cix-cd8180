@@ -23,13 +23,33 @@ let
   unfree = import ../../../lib/unfree.nix { lib = nixpkgs.lib; };
   allowUnfreePredicate = unfree.allowCixSky1Unfree;
 
-  # Helper to create netboot package
-  mkNetbootPackage = name: cfg: pkgs.runCommand name { } ''
-    mkdir -p $out
-    ln -s ${cfg.config.system.build.kernel}/Image $out/kernel
-    ln -s ${cfg.config.system.build.netbootRamdisk}/initrd $out/initrd
-    ln -s ${cfg.config.system.build.netbootIpxeScript}/netboot.ipxe $out/netboot.ipxe
-  '';
+  # Helper to create netboot package with standardized naming
+  # Pattern: nixos-{board}-netboot-{version}-{arch}.tar.gz
+  # Creates a tarball containing kernel, initrd, and iPXE script
+  mkNetbootPackage = cfg:
+    let
+      board = cfg.config.networking.hostName;
+      version = cfg.config.system.nixos.version;
+      arch = cfg.config.nixpkgs.hostPlatform.system;
+      name = "nixos-${board}-netboot-${version}-${arch}";
+      tarballName = "${name}.tar.gz";
+    in
+    pkgs.runCommand name { nativeBuildInputs = [ pkgs.gnutar pkgs.gzip ]; } ''
+      # Create temporary directory for netboot files
+      mkdir -p netboot
+      cp ${cfg.config.system.build.kernel}/Image netboot/kernel
+      cp ${cfg.config.system.build.netbootRamdisk}/initrd netboot/initrd
+      cp ${cfg.config.system.build.netbootIpxeScript}/netboot.ipxe netboot/netboot.ipxe
+      
+      # Create tarball
+      mkdir -p $out
+      tar -czf "$out/${tarballName}" -C netboot .
+      
+      # Also symlink individual files for compatibility
+      ln -s ${cfg.config.system.build.kernel}/Image $out/kernel
+      ln -s ${cfg.config.system.build.netbootRamdisk}/initrd $out/initrd
+      ln -s ${cfg.config.system.build.netbootIpxeScript}/netboot.ipxe $out/netboot.ipxe
+    '';
 in
 rec {
   # User-facing NixOS module
@@ -131,8 +151,8 @@ rec {
       orangepi6plus-sdImage = configurations.orangepi6plus.config.system.build.sdImage;
       orangepi6plus-sdImage-cross = configurations.orangepi6plus-cross.config.system.build.sdImage;
 
-      orangepi6plus-netboot = mkNetbootPackage "netboot-orangepi6plus" configurations.orangepi6plus-netboot;
-      orangepi6plus-netboot-cross = mkNetbootPackage "netboot-orangepi6plus-cross" configurations.orangepi6plus-netboot-cross;
+      orangepi6plus-netboot = mkNetbootPackage configurations.orangepi6plus-netboot;
+      orangepi6plus-netboot-cross = mkNetbootPackage configurations.orangepi6plus-netboot-cross;
 
       orangepi6plus-tools = pkgs.symlinkJoin {
         name = "orangepi6plus-tools";

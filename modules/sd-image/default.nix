@@ -10,6 +10,10 @@
     (modulesPath + "/installer/sd-card/sd-image.nix")
   ];
 
+  # Standardized image naming: nixos-{board}-sd-image-{version}-{arch}
+  # This overrides the default nixos-image-sd-card-* naming
+  image.baseName = "nixos-${config.networking.hostName}-sd-image-${config.system.nixos.version}-${pkgs.stdenv.hostPlatform.system}";
+
   sdImage = {
     compressImage = true;
 
