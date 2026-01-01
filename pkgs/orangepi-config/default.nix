@@ -17,7 +17,7 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "orangepi-xunlong";
     repo = "orangepi-build";
-    rev = "main";
+    rev = "f00cd197b4a9873f36093d4f4748b733642059a7";
     hash = "sha256-8Vqs08r9JAHBFnAkH6RWt1e/PhmUW26/62BVqaw1OL0=";
   };
 
