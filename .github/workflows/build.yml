@@ -194,7 +194,7 @@ jobs:
         echo "  - wiringop (GPIO library)"
         echo ""
         
-        nix build .#boards-orangepi6plus-tools-cross \
+        nix build .#orangepi6plus-tools-cross \
           --print-build-logs \
           --fallback
 
@@ -226,7 +226,7 @@ jobs:
     
     - name: Build SD Card Image (Orange Pi 6 Plus)
       run: |
-        nix build .#boards-orangepi6plus-sdImage-cross \
+        nix build .#orangepi6plus-sdImage-cross \
           --print-build-logs \
           --fallback \
           --keep-going
@@ -284,7 +284,7 @@ jobs:
     
     - name: Build Netboot Package (Orange Pi 6 Plus)
       run: |
-        nix build .#boards-orangepi6plus-netboot-cross \
+        nix build .#orangepi6plus-netboot-cross \
           --print-build-logs \
           --fallback \
           --keep-going
