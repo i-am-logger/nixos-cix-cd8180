@@ -24,7 +24,7 @@ The Orange Pi 6 Plus board module uses the vendor kernel by default for full har
 
 ### Default: Vendor Kernel
 
-The `nixosModules.boards.orangepi6plus` module automatically configures:
+The board module automatically configures:
 
 ```nix
 boot.kernelPackages = pkgs.cixSky1VendorKernelPackages;

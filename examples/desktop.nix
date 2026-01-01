@@ -1,19 +1,21 @@
-# Desktop configuration with GPU acceleration for Orange Pi 6 Plus
-# Includes window manager and basic desktop applications
+# Desktop configuration with XFCE
+# Works with any CIX CD8180/CD8160 based board
 {
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
-    nixos-cix-cd8180.url = "github:logger/nixos-cix-cd8180";
+    nixos-cix-cd8180.url = "github:i-am-logger/nixos-cix-cd8180";
   };
 
   outputs = { self, nixpkgs, nixos-cix-cd8180, ... }: {
-    nixosConfigurations.orangepi6plus = nixpkgs.lib.nixosSystem {
+    nixosConfigurations.desktop = nixpkgs.lib.nixosSystem {
       system = "aarch64-linux";
       modules = [
-        nixos-cix-cd8180.nixosModules.boards.orangepi6plus
+        # Choose your board:
+        nixos-cix-cd8180.nixosModules.orangepi6plus
+        # nixos-cix-cd8180.nixosModules.radxaoriono6  # (when available)
 
         {
-          networking.hostName = "orangepi-desktop";
+          networking.hostName = "desktop";
 
           # Enable X11 and window manager
           services.xserver = {
@@ -67,10 +69,10 @@
       ];
     };
 
-    # Convenience packages for easier building
+    # Build: nix build .#sdImage or nix build .#netboot
     packages.aarch64-linux = {
-      default = self.nixosConfigurations.orangepi6plus.config.system.build.toplevel;
-      sdImage = self.nixosConfigurations.orangepi6plus.config.system.build.sdImage;
+      sdImage = nixos-cix-cd8180.packages.aarch64-linux.orangepi6plus-sdImage;
+      netboot = nixos-cix-cd8180.packages.aarch64-linux.orangepi6plus-netboot;
     };
   };
 }

@@ -86,12 +86,12 @@
   nixpkgs.hostPlatform = "aarch64-linux";
 
   # Default filesystem configuration
-  fileSystems."/" = {
+  fileSystems."/" = lib.mkDefault {
     device = "/dev/disk/by-label/NIXOS_SD";
     fsType = "ext4";
   };
 
-  fileSystems."/boot" = {
+  fileSystems."/boot" = lib.mkDefault {
     device = "/dev/disk/by-label/BOOT";
     fsType = "vfat";
   };

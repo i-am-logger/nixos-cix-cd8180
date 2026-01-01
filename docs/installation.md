@@ -18,12 +18,12 @@ Build an image, flash to SD card, and boot.
 
 **Cross-compile from x86_64** (recommended):
 ```bash
-nix build .#boards-orangepi6plus-sdImage-cross
+nix build .#orangepi6plus-sdImage-cross
 ```
 
 **Native build on aarch64**:
 ```bash
-nix build .#boards-orangepi6plus-sdImage
+nix build .#orangepi6plus-sdImage
 ```
 
 The image will be in `result/sd-image/nixos-image-*.img.zst`
@@ -117,9 +117,14 @@ Boot over the network without local storage.
 
 #### 1. Build Netboot Components
 
+**Cross-compile from x86_64** (recommended):
 ```bash
-# Build all netboot components in one package
-nix build .#boards-orangepi6plus-netboot
+nix build .#orangepi6plus-netboot-cross
+```
+
+**Native build on aarch64**:
+```bash
+nix build .#orangepi6plus-netboot
 ```
 
 This creates a single package with:
@@ -187,25 +192,9 @@ dhcp-boot=tag:efi-arm64,nixos-cix-cd8180/boot.ipxe
 
 ## Post-Installation
 
-See [examples/](../examples/) for configuration examples.
+For configuration examples, see your board's documentation.
 
 ## Troubleshooting
 
-### Board won't boot from SD card
-
-1. Verify UEFI firmware is installed (pre-installed on Orange Pi 6 Plus)
-2. Check SD card is properly flashed: `sudo fdisk -l /dev/sdX`
-3. Try a different SD card
-
-### Can't find NVMe drive
-
-1. Check M.2 slot is properly seated
-2. Verify NVMe support in UEFI settings
-3. Check `dmesg | grep nvme` for kernel messages
-
-### Network boot fails
-
-1. Verify DHCP server is responding
-2. Check TFTP/HTTP server is accessible
-3. Review UEFI network settings
-4. Check firewall rules on PXE server
+For board-specific troubleshooting, see your board's documentation:
+- [Orange Pi 6 Plus Troubleshooting](boards/orangepi-6-plus.md#troubleshooting)

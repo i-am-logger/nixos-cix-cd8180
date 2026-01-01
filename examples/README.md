@@ -1,6 +1,20 @@
 # Example Configurations
 
-This directory contains example NixOS configurations for the Orange Pi 6 Plus.
+Generic NixOS configurations for CIX CD8180/CD8160 based boards.
+
+## Choosing Your Board
+
+All examples work with any board using the CIX CD8180/CD8160 SoC. Import the board module:
+
+```nix
+{
+  imports = [ nixos-cix-cd8180.nixosModules.orangepi6plus ];
+}
+```
+
+**Available board modules:**
+- `nixosModules.orangepi6plus` - Orange Pi 6 Plus
+- `nixosModules.radxaoriono6` - Radxa Orion O6 (when available)
 
 ## Available Examples
 
@@ -14,11 +28,9 @@ Features:
 - Basic firewall
 - Single user account
 
-**Build**:
+**Build** (replace `orangepi6plus` with your board name):
 ```bash
-nix build .#boards-orangepi6plus-sdImage
-# or the long form:
-# nix build .#nixosConfigurations.orangepi6plus.config.system.build.sdImage
+nix build .#orangepi6plus-sdImage-cross
 ```
 
 ### 2. [desktop.nix](./desktop.nix) - Desktop Environment
@@ -81,12 +93,12 @@ cp examples/minimal.nix my-config/flake.nix
 
 3. Build:
 ```bash
-nix build .#boards-orangepi6plus-sdImage
+nix build .#orangepi6plus-sdImage
 ```
 
 ### Method 2: Import as Module
 
-Use the nixos-cix-cd8180 flake as an input and import the board module:
+Use the nixos-cix-cd8180 flake as an input:
 
 ```nix
 {
@@ -98,7 +110,7 @@ Use the nixos-cix-cd8180 flake as an input and import the board module:
   outputs = { nixpkgs, nixos-cix-cd8180, ... }: {
     nixosConfigurations.myhost = nixpkgs.lib.nixosSystem {
       modules = [
-        nixos-cix-cd8180.nixosModules.boards.orangepi6plus
+        nixos-cix-cd8180.nixosModules.orangepi6plus
         ./configuration.nix
       ];
     };
@@ -159,7 +171,7 @@ Before flashing to SD card:
 nix flake check
 
 # Build to verify
-nix build .#boards-orangepi6plus-sdImage --dry-run
+nix build .#orangepi6plus-sdImage --dry-run
 ```
 
 ## Common Issues

@@ -1,23 +1,22 @@
 # Development Guide
 
-This guide covers local development, building, and testing for nixos-cix-cd8180.
+Local development, building, and testing.
 
-## Quick Start
+## Getting Started
 
 ```bash
 # Clone repository
 git clone https://github.com/i-am-logger/nixos-cix-cd8180
 cd nixos-cix-cd8180
 
-# Build kernel package
-nix build .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel
+# Validate flake
+nix flake check
 
-# Build SD card image
-nix build .#boards-orangepi6plus-sdImage-cross --print-build-logs
-
-# Build netboot components
-nix build .#boards-orangepi6plus-netboot-cross --print-build-logs
+# Build SD image (cross-compile recommended for x86_64 hosts)
+nix build .#orangepi6plus-sdImage-cross --print-build-logs
 ```
+
+For SoC component builds (kernel, drivers, firmware), see [CIX CD8180/CD8160 Documentation](cix-cd8180-cd8160.md).
 
 ## Build Performance with ccache
 
@@ -64,7 +63,7 @@ Check ccache statistics during/after build:
 
 ```bash
 # Build logs show ccache stats in postBuild phase
-nix build .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel --print-build-logs
+nix build .#kernel-cross --print-build-logs
 
 # Manually check cache size
 du -sh /tmp/ccache
@@ -85,24 +84,24 @@ nix-shell -p nixpkgs-fmt --run "nixpkgs-fmt --check ."
 nix flake check
 ```
 
-### Building Components
+### Building Board Images
 
 ```bash
-# Build specific kernel package
-nix build .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel
+# SD Card Image
+nix build .#orangepi6plus-sdImage-cross --print-build-logs  # x86_64 → aarch64
+nix build .#orangepi6plus-sdImage --print-build-logs        # aarch64 native
 
-# Build kernel with logs
-nix build .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel --print-build-logs
+# Network Boot
+nix build .#orangepi6plus-netboot-cross --print-build-logs  # x86_64 → aarch64
+nix build .#orangepi6plus-netboot --print-build-logs        # aarch64 native
 
-# Build SD image (cross-compiled)
-nix build .#boards-orangepi6plus-sdImage-cross --print-build-logs
-
-# Build netboot (cross-compiled)
-nix build .#boards-orangepi6plus-netboot-cross --print-build-logs
-
-# Check kernel version
-nix eval .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel.version
+# Board Tools
+nix build .#orangepi6plus-tools-cross  # orangepi-config, wiringop
 ```
+
+### Building SoC Components
+
+For kernel, drivers, firmware builds, see [CIX CD8180/CD8160 SoC Documentation](cix-cd8180-cd8160.md#soc-components).
 
 ### Development Shells
 
@@ -177,7 +176,7 @@ GitHub Actions automatically builds and caches:
 # TODO: Add QEMU testing instructions
 
 # Build and flash to SD card
-nix build .#boards-orangepi6plus-sdImage-cross
+nix build .#orangepi6plus-sdImage-cross
 zstd -d result/sd-image/*.img.zst
 sudo dd if=result/sd-image/*.img of=/dev/sdX bs=4M status=progress conv=fsync
 ```
@@ -200,17 +199,17 @@ ls -la /tmp/ccache  # Should be 0770 root:nixbld
 grep extra-sandbox-paths flake.nix  # Should include /tmp/ccache
 
 # Verify ccache wrapper
-cat $(nix build .#nixosConfigurations.orangepi6plus.config.boot.kernelPackages.kernel --no-link --print-out-paths)/bin/gcc
+cat $(nix build .#kernel-cross --no-link --print-out-paths)/bin/gcc
 ```
 
 ### Build Failures
 
 ```bash
 # Clean build (removes all caches)
-nix build .#boards-orangepi6plus-sdImage-cross --rebuild
+nix build .#orangepi6plus-sdImage-cross --rebuild
 
 # Verbose output
-nix build .#boards-orangepi6plus-sdImage-cross --print-build-logs --verbose
+nix build .#orangepi6plus-sdImage-cross --print-build-logs --verbose
 ```
 
 ## Additional Resources
