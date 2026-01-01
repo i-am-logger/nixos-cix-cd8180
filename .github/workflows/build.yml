@@ -456,105 +456,18 @@ jobs:
       uses: softprops/action-gh-release@v2
       with:
         tag_name: ${{ steps.version.outputs.version }}
-        name: "🎉 NixOS for CIX CD8180/CD8160 SoC (${{ steps.version.outputs.version }})"
+        name: "${{ steps.version.outputs.version }}"
         files: ./release-files/*
         generate_release_notes: true
         body: |
-          **Auto-generated release from commit `${{ github.sha }}`**
+          ## Installation
           
-          NixOS images for boards using the **CIX CD8180/CD8160 (Sky1)** SoC.
+          📖 **[SD Card Installation](https://github.com/${{ github.repository }}/blob/master/docs/installation.md#option-1-sd-card-boot)** | **[Network Boot Setup](https://github.com/${{ github.repository }}/blob/master/docs/installation.md#option-3-network-boot-pxe)**
           
-          ### 📦 Release Assets
+          ## Default Credentials
           
-          #### SD Card Image
-          - **File**: `${{ needs.build-sd-image.outputs.image_name }}`
-          - **Size**: ${{ needs.build-sd-image.outputs.image_size }}
-          - **SHA256**: `${{ needs.build-sd-image.outputs.image_hash }}`
-          - **NixOS Version**: 26.05 (unstable, based on nixpkgs commit c0b0e0f)
-          - **Kernel**: Linux 6.6.89-sky1 (vendor)
-          - **Bootloader**: extlinux (U-Boot compatible)
+          **Username**: `nixos` | **Password**: `nixos` | **SSH**: Enabled (port 22)
           
-          #### Network Boot (PXE)
-          - **File**: `${{ needs.build-netboot.outputs.netboot_name }}`
-          - **Size**: ${{ needs.build-netboot.outputs.netboot_size }}
-          - **SHA256**: `${{ needs.build-netboot.outputs.netboot_hash }}`
-          - **NixOS Version**: 26.05 (unstable, based on nixpkgs commit c0b0e0f)
-          - **Contents**: Kernel, initrd, iPXE script
-          
-          ### 🔧 Hardware Support
-          
-          **SoC Components (CIX Sky1 - CD8180/CD8160):**
-          - ✅ Mali-G610 MP4 GPU (cix-gpu-umd)
-          - ✅ 28.8 TOPS NPU (cix-npu-umd)
-          - ✅ ISP - Image Signal Processor (cix-isp-umd)
-          - ✅ VPU - Video Processing Unit (cix-vpu-firmware)
-          - ✅ Firmware files (cix-firmware)
-          - ✅ SoC tools - I3C, Power Management (cix-tools)
-          
-          **Board Components (Orange Pi 6 Plus):**
-          - ✅ RTL8126 2.5GbE Ethernet
-          - ✅ NVMe M.2 SSD support
-          - ✅ USB 3.0/2.0 ports
-          - ✅ Board tools - orangepi-config, wiringop (GPIO)
-          
-          ### 💾 Quick Start - SD Card
-          
-          ```bash
-          # Download the SD image for your board
-          wget <SD_IMAGE_URL>
-          
-          # Verify checksum
-          sha256sum -c <<< "<CHECKSUM>  <FILENAME>"
-          
-          # Decompress & Flash
-          zstd -d <FILENAME>
-          sudo dd if=nixos-sd-image-*.img of=/dev/sdX bs=4M status=progress conv=fsync
-          ```
-          
-          ### 🌐 Quick Start - Network Boot
-          
-          ```bash
-          # Download the netboot package for your board
-          wget <NETBOOT_URL>
-          
-          # Verify checksum
-          sha256sum -c <<< "<CHECKSUM>  <FILENAME>"
-          
-          # Extract to TFTP/HTTP server
-          tar -xzf <FILENAME> -C /srv/tftp/
-          ```
-          
-          ### 🔑 Default Credentials
-          
-          - **Username**: `nixos`
-          - **Password**: `nixos`
-          - **SSH**: Enabled (port 22)
-          
-          ⚠️ **Change password immediately after first boot!**
-          
-          ```bash
-          # After first login
-          passwd              # Change user password
-          sudo passwd root    # Change root password
-          ```
-          
-          ### 📚 Documentation
-          
-          - [README & Configuration Guide](https://github.com/${{ github.repository }})
-          - [Architecture Details](https://github.com/${{ github.repository }}/blob/master/ARCHITECTURE.md)
-          - [Configuration Examples](https://github.com/${{ github.repository }}/tree/master/examples)
-          
-          ### 🏗️ Build Information
-          
-          - **Commit**: `${{ github.sha }}`
-          - **NixOS**: 26.05 (unstable)
-          - **Build**: Cross-compiled (x86_64 → aarch64)
-          - **License**: CC BY-NC-SA 4.0
-          
-          ### ℹ️ Version Format
-          
-          Version tag format: `vYYYY.MM.DD-{commit}`
-          
-          This ensures every successful build on `master` branch creates a unique, dated release.
+          ⚠️ Change password after first boot: `passwd && sudo passwd root`
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
