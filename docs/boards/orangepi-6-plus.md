@@ -174,18 +174,90 @@ The board module automatically includes:
 
 
 
+## Boot Architecture
+
+### UEFI Boot Support
+The Orange Pi 6 Plus uses UEFI firmware with GRUB2 EFI bootloader:
+
+**Boot Flow:**
+```
+UEFI Firmware (NOR Flash)
+    ↓
+GRUB2 EFI (BOOTAA64.EFI)
+    ↓
+Linux Kernel + Initramfs + Device Tree (optional)
+    ↓
+NixOS System
+```
+
+**Boot Modes:**
+- **ACPI Mode** (default): Uses ACPI tables for hardware detection
+- **Device Tree Mode**: Uses explicit device tree blob (debugging/development)
+
+Both modes have been tested and confirmed working.
+
+**Serial Console:**
+- Port: ttyAMA2 (PL011 UART)
+- Baud rate: 115200
+- Parameters: 8N1 (8 data bits, no parity, 1 stop bit)
+
+**UART Debug Header Connection:**
+
+The board has multiple debug UART headers on the left side (3-pin headers).
+For serial console during boot, connect to any UART debug header:
+
+![UART Debug Header Pinout](../images/orangepi6plus-uart-pinout.png)
+
+**UART2 Debug Header (leftmost 3-pin header):**
+```
+Pin Number    Function       USB-TTL Adapter    Wire Color
+Pin 1         UART2_TXD  →   RX (green)         Green
+Pin 3         UART2_RXD  ←   TX (red)           Red
+Pin 5         GND        →   GND (black)        Black
+```
+
+**Note**: Board TX connects to adapter RX (green wire), board RX connects to adapter TX (red wire).
+
+**Available Debug UARTs (left side of board, from left to right):**
+- UART2 (leftmost header) - TXD, RXD, GND
+- UART4 (second header) - TXD, RXD, GND
+- UART6 (third header) - TXD, RXD, GND
+- UART5 (rightmost header) - TXD, RXD, GND
+
+**Voltage**: 3.3V logic level (do not use 5V TTL adapter)
+
+**Note**: The 40-pin GPIO header (right side) also has UART3 pins but the dedicated
+debug headers are more convenient for serial console access.
+
+### Partition Layout
+
+SD card images use GPT partition table:
+```
+Offset: 10 MiB (reserved for bootloader)
+├─ Partition 1: ESP (FAT32, 200 MiB, label: ESP)
+│  ├─ /EFI/BOOT/BOOTAA64.EFI
+│  ├─ /grub/grub.cfg
+│  ├─ /Image (kernel)
+│  ├─ /initrd
+│  └─ /dtbs/cix/*.dtb
+└─ Partition 2: Root (ext4, auto-resize, label: NIXOS_SD)
+   └─ NixOS root filesystem
+```
+
 ## Hardware Status
 
 ### Working ✅
-- **Ethernet**: RTL8126 2.5GbE (r8169 driver)
-- **NVMe**: M.2 SSD support (nvme driver)
-- **USB**: USB 3.0/2.0 ports (xhci_pci driver)
-- **UART/Serial**: Console access
+- **UEFI Boot**: ACPI and Device Tree modes
+- **Serial Console**: ttyAMA2 (115200 baud)
+- **HDMI Console**: Framebuffer console at 1920x1080 (tty0)
+- **Bootloader**: GRUB2 EFI with vendor binary
+- **Storage**: SD card, NVMe M.2 SSD
+- **USB**: USB 3.0/2.0 ports
 - **GPIO**: sysfs, cdev access
-- **UEFI Boot**: From SD card and NVMe
 
-### Untested ⚠️
-- **GPU**: Mali-G610 MP4 (drivers packaged)
+### To Be Tested ⚠️
+- **Ethernet**: RTL8126 2.5GbE
+- **GPU**: Mali-G610 MP4 acceleration (drivers packaged, basic framebuffer works)
 - **NPU**: 28.8 TOPS (drivers packaged)
 - **ISP**: Camera support (drivers packaged)
 - **VPU**: Video codec (drivers packaged)
@@ -208,8 +280,31 @@ All examples include a board module selector - just uncomment your board.
 
 1. Verify UEFI firmware is installed (pre-installed on Orange Pi 6 Plus)
 2. Check SD card is properly flashed: `sudo fdisk -l /dev/sdX`
-3. Try a different SD card (some cards are incompatible)
-4. Check UEFI boot menu (ESC or F12 during boot)
+3. Verify GPT partition table with 10 MiB offset
+4. Check ESP partition contains BOOTAA64.EFI: `mdir -i /dev/sdX1 ::EFI/BOOT/`
+5. Try a different SD card (some cards are incompatible)
+6. Connect serial console to ttyAMA2 for boot messages
+
+### System boots but kernel panics
+
+1. **"VFS: Unable to mount root"**: Check root partition has NIXOS_SD label
+   ```bash
+   blkid /dev/sdX2 | grep NIXOS_SD
+   ```
+2. **"No initramfs loaded"**: Verify GRUB config has `initrd /initrd` line
+   ```bash
+   mcopy -i /dev/sdX1 ::/grub/grub.cfg - | grep initrd
+   ```
+3. Try Device Tree boot mode from GRUB menu (press key during countdown)
+
+### GRUB menu doesn't appear
+
+1. Wait 2 seconds for auto-boot (default timeout)
+2. Press any key during UEFI boot to enter GRUB menu
+3. Verify GRUB config exists:
+   ```bash
+   mdir -i /dev/sdX1 ::/grub/
+   ```
 
 ### No NVMe drive detected
 

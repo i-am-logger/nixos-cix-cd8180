@@ -117,7 +117,16 @@ in
   '';
 
   postInstall = (old.postInstall or "") + ''
-    mkdir -p $out/dtbs
-    cp arch/arm64/boot/dts/cix/*.dtb $out/dtbs/ 2>/dev/null || true
+    # Install device tree blobs for CIX Sky1 SoC
+    echo "Installing device tree blobs..."
+    mkdir -p $out/dtbs/cix
+    
+    if [ -d arch/arm64/boot/dts/cix ]; then
+      cp arch/arm64/boot/dts/cix/*.dtb $out/dtbs/cix/
+      echo "Installed DTBs:"
+      ls -lh $out/dtbs/cix/*.dtb
+    else
+      echo "Warning: No CIX device tree blobs found in arch/arm64/boot/dts/cix"
+    fi
   '';
 })

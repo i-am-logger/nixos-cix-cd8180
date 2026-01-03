@@ -51,6 +51,12 @@
         "hid"
         "hid_generic"
         "usbhid"
+
+        # Graphics (for early framebuffer console)
+        "panfrost" # Mali GPU DRM driver (for HDMI/DP framebuffer)
+        "drm"
+        "drm_kms_helper"
+        "drm_display_helper"
       ];
     };
 

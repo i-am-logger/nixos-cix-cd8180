@@ -9,6 +9,7 @@ let
     cix-isp-umd = final.callPackage ../../pkgs/drivers/isp { };
     cix-vpu-firmware = (final.callPackage ../../pkgs/drivers/vpu { }).vpu-firmware;
     cix-firmware = final.callPackage ../../pkgs/firmware { };
+    cix-grub-efi = final.callPackage ../../pkgs/firmware/grub-efi.nix { };
     cix-tools = final.callPackage ../../pkgs/cix-tools { };
   };
 in
