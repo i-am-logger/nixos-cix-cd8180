@@ -17,11 +17,15 @@ NixOS flake for CIX CD8180/CD8160 (Sky1) based single-board computers.
 - **Firmware**: Pre-packaged for all hardware
 - **Tools**: Board-specific configuration utilities
 
+![NixOS running on Orange Pi 6 Plus](docs/images/nixos-orangepi6plus-neofetch.png)
+
+*NixOS 26.05 running on Orange Pi 6 Plus with HDMI console (1920x1080)*
+
 ## Supported Boards
 
 | Board | SD Card | NVMe | PXE | Documentation |
 |-------|---------|------|-----|---------------|
-| Orange Pi 6 Plus | ✅ Building | ⚠️ Untested | ✅ Building | [docs](docs/boards/orangepi-6-plus.md) |
+| Orange Pi 6 Plus | ✅ Tested | ⚠️ Untested | ✅ Building | [docs](docs/boards/orangepi-6-plus.md) |
 | Radxa Orion O6 | ⚠️ Planned | ⚠️ Planned | ⚠️ Planned | - |
 
 ## Documentation
@@ -80,4 +84,4 @@ See [LICENSE](./LICENSE) for details.
 
 ---
 
-**Status**: Build in progress | Hardware testing pending | Community contributions welcome
+**Status**: ✅ Tested on Orange Pi 6 Plus | Community contributions welcome
