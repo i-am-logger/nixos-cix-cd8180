@@ -40,8 +40,23 @@ Replace `/dev/sdX` with your SD card device (check with `lsblk`).
 #### 3. Boot
 
 1. Insert SD card into the board
-2. Power on the board
-3. The board should boot via UEFI
+2. Connect serial console to ttyAMA2 (optional, for debugging)
+3. Power on the board
+4. GRUB menu will appear with two boot options:
+   - **NixOS - Orange Pi 6 Plus (ACPI)** - Default, production mode
+   - **NixOS - Orange Pi 6 Plus (Device Tree)** - Alternative mode
+
+The system will boot automatically after 2 seconds.
+
+**Boot Process:**
+- UEFI firmware loads GRUB EFI bootloader
+- GRUB loads kernel, initramfs, and optionally device tree
+- NixOS boots with configured parameters
+
+**Serial Console:**
+- Port: ttyAMA2
+- Baud rate: 115200
+- No parity, 8 data bits, 1 stop bit
 
 **Default credentials:**
 - Username: `nixos`
@@ -232,7 +247,74 @@ For NixOS configuration examples, see the [examples directory](../examples/):
 
 Board-specific details: [Orange Pi 6 Plus Documentation](boards/orangepi-6-plus.md)
 
+## Boot Modes
+
+The system supports two boot modes selectable from GRUB menu:
+
+### ACPI Mode (Default)
+- Uses ACPI tables for hardware detection
+- Better hardware abstraction layer
+- Recommended for production use
+- Kernel parameter: `acpi=force`
+
+### Device Tree Mode
+- Uses explicit device tree blob for hardware configuration
+- Useful for debugging and development
+- Alternative when ACPI has issues
+- Kernel parameter: `acpi=off`
+- DTB: `sky1-orangepi-6-plus.dtb`
+
+Both modes have been tested and confirmed working on Orange Pi 6 Plus.
+
+## Partition Layout
+
+The SD card image uses the following partition layout:
+
+```
+Offset: 10 MiB (reserved for bootloader/firmware)
+├─ Partition 1: ESP (FAT32, 200 MiB)
+│  ├─ /EFI/BOOT/BOOTAA64.EFI - GRUB bootloader
+│  ├─ /grub/grub.cfg - Boot configuration
+│  ├─ /Image - Linux kernel
+│  ├─ /initrd - Initial ramdisk
+│  └─ /dtbs/cix/*.dtb - Device tree blobs
+└─ Partition 2: Root (ext4, auto-resize on first boot)
+   └─ NixOS root filesystem
+```
+
 ## Troubleshooting
+
+### Boot Issues
+
+**System doesn't boot:**
+- Verify UEFI firmware is present (pre-installed on Orange Pi 6 Plus)
+- Check serial console output on ttyAMA2 for error messages
+- Try Device Tree mode if ACPI mode fails
+
+**Kernel panic during boot:**
+- Ensure SD card is properly inserted and readable
+- Verify image was flashed correctly (check with `dd if=/dev/sdX bs=512 count=1 | hexdump -C`)
+- Check that root partition has NIXOS_SD label (`blkid /dev/sdX2`)
+
+**GRUB menu doesn't appear:**
+- Wait 2 seconds for auto-boot
+- Check that ESP partition contains BOOTAA64.EFI
+
+### First Use
+
+**Nix commands slow on first run:**
+
+First `nix shell` or `nix-shell` command can take 1-3 minutes - this is normal behavior.
+
+A fresh NixOS system needs to:
+1. Download and evaluate the nixpkgs flake registry
+2. Fetch package metadata from cache.nixos.org
+3. Download/build packages
+
+**Recommendations:**
+- Be patient on first use (subsequent commands will be fast)
+- Use `nix shell nixpkgs#package` for better flake support
+- Verify network: `ping cache.nixos.org`
 
 For board-specific troubleshooting, see your board's documentation:
 - [Orange Pi 6 Plus Troubleshooting](boards/orangepi-6-plus.md#troubleshooting)
