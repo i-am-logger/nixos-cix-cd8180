@@ -28,13 +28,36 @@
     rootPartitionUUID = null; # Auto-generate UUID
     rootVolumeLabel = "NIXOS_SD"; # NixOS standard label
 
-    # Populate ESP with GRUB EFI bootloader and boot files
-    # Use the bootloader module to ensure consistency between SD image and nixos-rebuild
+    # Populate ESP with GRUB, kernel, initrd, and device tree blobs
     populateFirmwareCommands =
       let
+        kernel = config.boot.kernelPackages.kernel;
         grubEfi = pkgs.cix-grub-efi;
-        toplevel = config.system.build.toplevel;
-        bootloader = config.system.build.installBootLoader;
+        initrd = "${config.system.build.initialRamdisk}/initrd";
+
+        # Generate GRUB config
+        kernelParams = lib.concatStringsSep " " (config.boot.kernelParams ++ [
+          "root=LABEL=${config.sdImage.rootVolumeLabel}"
+          "init=${config.system.build.toplevel}/init"
+        ]);
+
+        grubCfg = pkgs.writeText "grub.cfg" ''
+          set debug=loader,mm
+          set term=vt100
+          set default=0
+          set timeout=2
+        
+          menuentry 'NixOS - Orange Pi 6 Plus (ACPI)' {
+              linux /Image ${kernelParams}
+              initrd /initrd
+          }
+        
+          menuentry 'NixOS - Orange Pi 6 Plus (Device Tree)' {
+              devicetree /dtbs/cix/sky1-orangepi-6-plus.dtb
+              linux /Image ${lib.replaceStrings ["acpi=force"] ["acpi=off"] kernelParams}
+              initrd /initrd
+          }
+        '';
       in
       ''
         echo "Populating ESP partition..."
@@ -43,10 +66,29 @@
         echo "Installing GRUB EFI bootloader..."
         cp -r ${grubEfi}/EFI firmware/
       
-        # Use the bootloader module to install kernel, initrd, dtbs, and grub.cfg
-        # This ensures the SD image uses the same multi-generation logic as nixos-rebuild
-        echo "Installing bootloader configuration..."
-        ${bootloader} ${toplevel} firmware
+        # Install GRUB configuration
+        echo "Installing GRUB configuration..."
+        mkdir -p firmware/grub
+        cp ${grubCfg} firmware/grub/grub.cfg
+      
+        # Install kernel
+        echo "Installing kernel..."
+        cp ${kernel}/Image firmware/
+      
+        # Install initrd
+        echo "Installing initrd..."
+        cp ${initrd} firmware/initrd
+      
+        # Install device tree blobs
+        echo "Installing device tree blobs..."
+        mkdir -p firmware/dtbs/cix
+        if [ -d ${kernel}/dtbs/cix ]; then
+          cp ${kernel}/dtbs/cix/*.dtb firmware/dtbs/cix/
+          echo "Installed device tree blobs:"
+          ls -lh firmware/dtbs/cix/
+        else
+          echo "Warning: No CIX device tree blobs found at ${kernel}/dtbs/cix"
+        fi
       
         echo "ESP partition populated successfully"
       '';

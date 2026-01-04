@@ -82,9 +82,20 @@
   # CIX Sky1 proprietary userspace drivers and tools
   # These work with the kernel modules above
   environment.systemPackages = with pkgs; [
+    # GPU/NPU/ISP userspace drivers
     cix-gpu-umd # Mali-G610 MP4 GPU userspace drivers (OpenGL ES, Vulkan)
     cix-npu-umd # 28.8 TOPS NPU userspace drivers
     cix-isp-umd # Image Signal Processor userspace drivers
+
+    # Graphics libraries (essential for GPU to work)
+    cix-libdrm # DRM library for display/GPU integration
+    cix-mesa # Mesa 3D graphics library with Mali support
+    cix-libglvnd # OpenGL vendor neutral dispatch
+
+    # Multimedia (hardware accelerated)
+    cix-gstreamer # GStreamer with GPU/VPU acceleration
+
+    # Vendor tools
     cix-tools # I3C transfer tool and power management (i3ctransfer, pmtool)
   ];
 
