@@ -5,7 +5,6 @@
 {
   imports = [
     ../../soc-cix-sky1/module.nix # CIX Sky1 SoC base configuration
-    ./bootloader.nix # Orange Pi 6 Plus bootloader
   ];
 
   config = {
@@ -18,13 +17,11 @@
     ];
 
     boot = {
-      # UEFI boot with vendor GRUB
-      # Orange Pi 6 Plus has pre-installed GRUB in vendor firmware
-      # We use boot.loader.external to update GRUB's configuration
+      # UEFI boot with vendor GRUB (no NixOS GRUB due to cross-compilation complexity)
+      # GRUB EFI binary and config are installed manually in SD image module
+      # Use mkDefault to allow netboot and other specialized configs to override
       loader = {
-        grub.enable = lib.mkDefault false; # Disable NixOS GRUB (use vendor binary)
-        systemd-boot.enable = lib.mkDefault false; # Disable systemd-boot
-        external.enable = lib.mkDefault true; # Use external bootloader (vendor GRUB)
+        grub.enable = lib.mkDefault false; # Disable NixOS GRUB (use vendor binary instead)
         timeout = lib.mkDefault 2;
 
         efi = {

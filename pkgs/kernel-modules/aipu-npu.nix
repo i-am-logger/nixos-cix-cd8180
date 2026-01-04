@@ -3,17 +3,13 @@
 
 { lib
 , stdenv
-, fetchFromGitHub
+, cix-component-srcs
 , kernel
+,
 }:
 
 let
-  componentSrc = fetchFromGitHub {
-    owner = "orangepi-xunlong";
-    repo = "component_cix-current";
-    rev = "be5fa75cc218bb10ab6c9064a3562fab97792ec2";
-    hash = "sha256-rPGsnIzGou+Fp6DTMbJQ/fhUmdzfE/nenmbTc7avsaw=";
-  };
+  componentSrc = cix-component-srcs.component_cix-next;
 in
 stdenv.mkDerivation {
   pname = "aipu-npu-driver";
@@ -45,16 +41,16 @@ stdenv.mkDerivation {
 
   installPhase = ''
     runHook preInstall
-    
+
     mkdir -p $out/lib/modules/${kernel.modDirVersion}/kernel/drivers/misc
     cp aipu.ko $out/lib/modules/${kernel.modDirVersion}/kernel/drivers/misc/
-    
+
     runHook postInstall
   '';
 
   meta = with lib; {
     description = "ARM China Zhouyi AIPU (NPU) kernel driver - 28.8 TOPS for CIX CD8180/CD8160 SoC (Sky1)";
-    homepage = "https://github.com/orangepi-xunlong/component_cix-current";
+    homepage = "https://github.com/orangepi-xunlong/component_cix-next";
     license = licenses.gpl2;
     platforms = [ "aarch64-linux" ];
   };

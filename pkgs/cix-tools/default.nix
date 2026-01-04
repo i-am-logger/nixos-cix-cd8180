@@ -1,21 +1,18 @@
+# Source: orangepi-xunlong/component_cix-next
 # CIX vendor-specific tools
 # Provides tools not available in standard nixpkgs
 { lib
 , stdenv
-, fetchFromGitHub
+, cix-component-srcs
 , autoPatchelfHook
+,
 }:
 
 stdenv.mkDerivation rec {
   pname = "cix-tools";
-  version = "unstable-2024-12-30";
+  version = "1.0.0+2503.cix-next";
 
-  src = fetchFromGitHub {
-    owner = "orangepi-xunlong";
-    repo = "component_cix-current";
-    rev = "be5fa75cc218bb10ab6c9064a3562fab97792ec2";
-    hash = "sha256-rPGsnIzGou+Fp6DTMbJQ/fhUmdzfE/nenmbTc7avsaw=";
-  };
+  src = cix-component-srcs.component_cix-next;
 
   nativeBuildInputs = [ autoPatchelfHook ];
 
@@ -45,7 +42,7 @@ stdenv.mkDerivation rec {
       - MTD: mtdutils (mtd_debug, flash_erase, etc.)
       - UART: minicom, picocom, screen
     '';
-    homepage = "https://github.com/orangepi-xunlong/component_cix-current";
+    homepage = "https://github.com/orangepi-xunlong/component_cix-next";
     license = licenses.unfree;
     platforms = [ "aarch64-linux" ];
     maintainers = [ ];
