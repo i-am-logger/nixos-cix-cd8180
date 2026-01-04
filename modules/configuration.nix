@@ -8,6 +8,11 @@
 
   # Basic system packages for terminal use
   environment.systemPackages = with pkgs; [
+    coreutils # Basic Unix utilities (cat, ls, head, tail, etc.)
+    util-linux # More system utilities (lsblk, dmesg, etc.)
+    pciutils # lspci
+    usbutils # lsusb
+    kmod # Kernel module utilities (lsmod, modprobe)
     vim
     nano
     wget
