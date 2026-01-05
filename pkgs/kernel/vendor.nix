@@ -20,8 +20,8 @@ let
   src = fetchFromGitHub {
     owner = "orangepi-xunlong";
     repo = "linux-orangepi";
-    rev = "a77ba3818bee2d35a81425ed9745d8f5bb9c5725"; # orange-pi-6.6-cix branch
-    hash = "sha256-GQM7AAS6hjzbjILTHPU0fYF8nLK1B/4FbYeK1x0h0lA=";
+    rev = "0cc923dcd40c973e72f3bc2dfbe274076afa4f6d"; # orange-pi-6.6-cix branch
+    hash = "sha256-d3+setUX3CgQUvqVNdUgc2uDrU3CcQXKWyhcIBzlec0=";
   };
 
   # Use ccacheWrapper following the official nixpkgs pattern
