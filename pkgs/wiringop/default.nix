@@ -13,8 +13,8 @@ stdenv.mkDerivation rec {
   src = fetchFromGitHub {
     owner = "orangepi-xunlong";
     repo = "orangepi-build";
-    rev = "next"; # wiringpi deb is on next branch, not main
-    hash = "sha256-rd+rz/69NRzQ4kf5WkD2KwMf7SiarRp+a2o4mhaYE74=";
+    rev = "f00cd197b4a9873f36093d4f4748b733642059a7"; # wiringpi deb is on next branch, not main
+    hash = "sha256-8Vqs08r9JAHBFnAkH6RWt1e/PhmUW26/62BVqaw1OL0=";
   };
 
   nativeBuildInputs = [
