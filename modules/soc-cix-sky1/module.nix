@@ -1,7 +1,12 @@
 # Base configuration for CIX Sky1 SoC (CD8180/CD8160)
 # Common settings shared across all Sky1-based boards
 # Hardware: 12-core CPU, Mali-G610 MP4 GPU, 28.8 TOPS NPU, ISP, VPU
-{ config, pkgs, lib, ... }:
+{
+  config,
+  pkgs,
+  lib,
+  ...
+}:
 
 {
   # Boot configuration for CIX Sky1 SoC
@@ -11,12 +16,13 @@
 
     # CIX opensource kernel modules (GPU, NPU, ISP, VPU)
     # These are SoC-specific, not board-specific
-    extraModulePackages = with (pkgs.callPackage ../../pkgs/kernel-modules { kernel = config.boot.kernelPackages.kernel; }); [
-      mali-gpu # Mali-G610 MP4 GPU kernel driver
-      aipu-npu # 28.8 TOPS NPU kernel driver
-      armcb-isp # ARM Camera Block ISP kernel driver
-      mvx-vpu # MVX Video Processing Unit kernel driver
-    ];
+    extraModulePackages =
+      with (pkgs.callPackage ../../pkgs/kernel-modules { kernel = config.boot.kernelPackages.kernel; }); [
+        mali-gpu # Mali-G610 MP4 GPU kernel driver
+        aipu-npu # 28.8 TOPS NPU kernel driver
+        armcb-isp # ARM Camera Block ISP kernel driver
+        mvx-vpu # MVX Video Processing Unit kernel driver
+      ];
 
     # Common kernel parameters for Sky1 SoC
     kernelParams = [
@@ -109,10 +115,14 @@
   };
 
   fileSystems."/boot" = lib.mkDefault {
-    device = "/dev/disk/by-label/BOOT";
+    device = "/dev/disk/by-label/ESP";
     fsType = "vfat";
   };
 
   # Enable DHCP by default
   networking.useDHCP = lib.mkDefault true;
+
+  # Enable WiFi and Bluetooth (M.2 module has both)
+  networking.wireless.enable = lib.mkDefault true;
+  hardware.bluetooth.enable = lib.mkDefault true;
 }

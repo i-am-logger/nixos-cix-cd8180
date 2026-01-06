@@ -9,6 +9,7 @@
       cachix
       nix-prefetch-github
       nixpkgs-fmt
+      minicom
     ];
     shellHook = ''
       echo "NixOS CIX CD8180/CD8160 (Sky1) Development Environment"
@@ -24,19 +25,22 @@
 
   kernel = pkgs.mkShell {
     name = "kernel-build-env";
-    packages = with pkgs; [
-      pkg-config
-      ncurses
-      pkgsCrossUnfree.stdenv.cc
-      gcc
-      bc
-      bison
-      flex
-      openssl
-      perl
-      python3
-      dtc
-    ] ++ pkgs.linux.nativeBuildInputs;
+    packages =
+      with pkgs;
+      [
+        pkg-config
+        ncurses
+        pkgsCrossUnfree.stdenv.cc
+        gcc
+        bc
+        bison
+        flex
+        openssl
+        perl
+        python3
+        dtc
+      ]
+      ++ pkgs.linux.nativeBuildInputs;
 
     shellHook = ''
       export CROSS_COMPILE=aarch64-unknown-linux-gnu-
