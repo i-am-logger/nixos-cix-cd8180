@@ -25,7 +25,7 @@ NixOS flake for CIX CD8180/CD8160 (Sky1) based single-board computers.
 
 | Board | SD Card | NVMe | PXE | Documentation |
 |-------|---------|------|-----|---------------|
-| Orange Pi 6 Plus | ✅ Tested | ⚠️ Untested | ✅ Building | [docs](docs/boards/orangepi-6-plus.md) |
+| Orange Pi 6 Plus | ✅ Tested | ✅ Tested | ✅ Building | [docs](docs/boards/orangepi-6-plus.md) |
 | Radxa Orion O6 | ⚠️ Planned | ⚠️ Planned | ⚠️ Planned | - |
 
 ## Documentation
@@ -81,7 +81,3 @@ We welcome contributions! See [.github/CONTRIBUTING.md](.github/CONTRIBUTING.md)
 **Creative Commons Attribution-NonCommercial-ShareAlike 4.0 International (CC BY-NC-SA 4.0)**
 
 See [LICENSE](./LICENSE) for details.
-
----
-
-**Status**: ✅ Tested on Orange Pi 6 Plus | Community contributions welcome
